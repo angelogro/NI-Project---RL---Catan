@@ -16,21 +16,36 @@ class Game:
 	HEX_DESERT = 0
 	PORT_ANY = 6
 
-	def __init__(self):
-		self.tiles = Hex_tiles(random_init=True)
+	NUM_CROSSINGS = 54
+
+
+
+	def __init__(self,random_init=True):
+		self.tiles = Hex_tiles(random_init)
 		self.crossings = Crossings(self.tiles.get_tiles(),self.tiles.harbours)
 		self.roads = Roads(self.crossings.get_neighbouring_crossings())
-		self.crossings_state = self.crossings.get_state()
-	
+		self.building_state = self.crossings.get_building_state()
+		self.dices_results = [2,3,3,4,4,4,5,5,5,5,6,6,6,6,6,7,7,7,7,7,7,8,8,8,8,8,9,9,9,9,10,10,10,11,11,12]
+
+		self.cards = np.zeros((4,5))
+
+		# Just for testing purposes
+		self.place_settlement(8,1)
+		self.place_settlement(30,1)
+		self.place_settlement(40,1)
+		self.place_road(12,1)
+		self.place_road(13,1)
+		self.place_road(14,1)
+
 	# returns nextState,reward and whether the game is finished
+	# General function which should be implemented at the end.
 	def step(self,action):
-
-
 
 		return None
 
+	# OLD FUNCTION, CAN DEFINITELY BE REMOVED
 	def get_possibleActions(self,player_num):
-		self.crossings_state = self.crossings.get_state()
+		#self.crossings_state = self.crossings.get_state()
 		self.road_state = self.roads.get_state()
 
 		# Initial placement
@@ -39,6 +54,7 @@ class Game:
 		actions+=self.check_place_road(player_num)
 		return None
 
+	# OLD FUNCTION, CAN DEFINITELY BE REMOVED
 	def check_initialSettlement(self,player_num):
 		# Returns actions array [DoNothing,placeInitSettlement,placeInitRoad]
 		num_initsettlements = sum(self.crossings_state[self.crossings_state==player_num])
@@ -54,6 +70,132 @@ class Game:
 	def check_place_road(self,player_num):
 		# Returns actions array [PlaceRoad@0,PlaceRoad@1,PlaceRoad@2 ....,PlaceRoad@71]
 		pass
+
+	def roll_dice(self):
+		"""
+		Rolls the dice.
+
+		If it is a 7, the robber shall be moved. Otherwise distribute the corresponding resources.
+		"""
+		number = random.choice(self.dices_results)
+		if number == 7:
+			# Actually here we have to make sure that the next action taken by the player will be move_robber()
+			self.move_robber()
+		else:
+			self.distribute_resources(number)
+
+	def move_robber(self):
+		pass
+
+	def distribute_resources(self,number):
+		"""
+		Distribute the resources according to the rules.
+
+		:param
+			number:
+				Number rolled by the dices.
+		"""
+		crossings = self.crossings.get_crossings()
+		buildings = self.crossings.get_building_state()
+
+		# Go through all crossings
+		for i in range(len(crossings)):
+			# Checks if there is no building on the crossing
+			if buildings[i] == 0:
+				continue
+			# Iterate through all neighbouring tiles of the crossing
+			for tile in crossings[i][1]:
+				# If the rolled number is a number chip on one of those crossings
+				if tile[1]==number:
+					self.add_resource(tile[0]-1,(buildings[i]%4)-1)
+					# If it is a town, add one more resource
+					if buildings[i] > 4:
+						self.add_resource(tile[0]-1,(buildings[i]%4)-1)
+
+
+	def add_resource(self,resource_type,player_num):
+		"""
+		Adds a resource of resource_type to the stack of cards of player player_num.
+
+		Checks if resource is available at all.
+		:param
+			resource_type:
+				Resource_type to be added.
+			player_num:
+				Player the resource is added to.
+
+		:return:
+			bool
+				True if the resource is available, False otherwise.
+		"""
+		if not self.check_resource_available_on_pile(resource_type):
+			return
+		self.cards[player_num,resource_type] += 1
+
+	def check_resource_available_on_pile(self,resource_type):
+		"""
+		Checks if a certain resource type is still available to be drawn ba a player.
+
+		:param resource_type:
+			Resource_type to be checked.
+
+		:return:
+			bool
+				True if the resource is available, False otherwise.
+		"""
+		if np.sum(self.cards[:,resource_type]) >= 19:
+			return False
+		return True
+
+	# Placeholder
+	def place_settlement(self,crossing_index,player_num):
+		self.crossings.place_settlement(crossing_index,player_num)
+		pass
+
+	#Placeholder
+	def place_road(self,road_index,player_num):
+		self.roads.place_road(road_index,player_num)
+		pass
+
+	def get_possible_actions_build_settlement(self,player_num):
+		"""
+		Returns all locations where settlement can be placed by the given player.
+
+		:param player_num:
+			Number of the player.
+		"""
+		# Exception needed for initialization settlements
+		 ##############################################
+
+		# Find all crossings a road of this player is connected to
+		crossings_connected_to_roads = np.unique(self.roads.get_roads()[self.roads.get_state()==player_num])
+
+		valid_crossings = np.zeros(self.NUM_CROSSINGS)
+
+		# Iterate through all crossings a road of this player is connected to
+		for crossing in crossings_connected_to_roads:
+			valid_crossings[crossing] = 1 # assuming it is valid
+
+			# Checks if there is a building on this crossing
+			if self.crossings.building_state[crossing]>0:
+				# If there is, the crossing is not valid for placing a settlement
+				valid_crossings[crossing] = 0
+				continue
+
+			# Iterate through all crossings connected to this crossing
+			for first_crossing in self.crossings.get_neighbouring_crossings()[crossing]:
+
+				# Checks if there is a building on this crossing
+				if self.crossings.building_state[first_crossing]>0:
+
+					# If there is, the crossing is not valid for placing a settlement
+					valid_crossings[crossing] = 0
+					break
+
+		# Returns the remaining valid crossings
+		return valid_crossings
+
+
 
 class Hex_tiles:
 	def __init__(self,random_init=True):
@@ -145,8 +287,10 @@ class Hex_tiles:
 		cols = list(list(zip(*self.tiles))[0])
 		data = list(list(zip(*self.tiles))[1])
 		tiles_vector = np.ravel(coo_matrix((data, (rows, cols)), shape=(19,6)).toarray())
-		harbours_vector = np.array(self.harbours)
-		return np.concatenate((tiles_vector,harbours_vector))
+		return tiles_vector
+
+	def get_harbour_state(self):
+		return np.array(self.harbours)
 
 
 class Crossings:
@@ -163,7 +307,7 @@ class Crossings:
 		   [28,39],[38,40,47],[39,30,41],[40,42,49],[41,32,43],[42,44,51],[43,34,45],[44,53,46],[36,45],
 		   [39,48],[47,49],[48,41,50],[49,51],[50,43,52],[51,53],[52,45]]
 		# Indices of neighbouring tiles
-		lst_neighbouring_tiles=[[0],[0],[0,1],[1],[1,2],[2],[2],
+		self.neighbouring_tiles=[[0],[0],[0,1],[1],[1,2],[2],[2],
 							[3],[0,3],[3,4],[0,1,4],[1,4,5],[1,2,5],[2,5,6],[2,6],[6],
 							[7],[3,7],[3,7,8],[3,4,8],[4,8,9],[4,5,9],[5,9,10],[5,6,10],[6,10,11],[6,11],[11],
 							[7],[7,12],[7,12,8],[8,12,13],[8,9,13],[13,9,14],[9,10,14],[10,14,15],[10,11,15],[11,15],[11],
@@ -172,7 +316,7 @@ class Crossings:
 		connected_tiles = []
 
 		# Combines the connected tile information (resource type, number) to each crossing
-		for neighbouring_tiles in lst_neighbouring_tiles:
+		for neighbouring_tiles in self.neighbouring_tiles:
 			_tiles=[]
 			for tile in neighbouring_tiles:
 				_tiles.append(tiles[tile])
@@ -186,17 +330,23 @@ class Crossings:
 		for h,t in zip(harbours_ind,harbours):
 			for ele in h:
 				harbours_lst[ele] = t
-		self.crossings = list(zip(self.neighbouring_crossings,connected_tiles,[0]*len(connected_tiles),harbours_lst))
+		self.crossings = list(zip(self.neighbouring_crossings,connected_tiles,harbours_lst))
+		self.building_state = [0]*len(connected_tiles)
+
+
+	def place_settlement(self,crossing_index,player_num):
+		self.building_state[crossing_index] = player_num
+
 
 	def get_crossings(self):
 		"""
 		Returns the crossing list containing all relevant information about the crossings.
 
 		:return:
-			list(tuple(neighbour_crossing_indices, neighbouring_tiles,current_building,harbours), length 54 (amount of crossings)
-				Example of one list element: ([1, 8], [(1, 12)], 0, 3) ... :
+			list(tuple(neighbour_crossing_indices, neighbouring_tiles,harbours), length 54 (amount of crossings)
+				Example of one list element: ([1, 8], [(1, 12)], 3) ... :
 				Neighbouring Crossings indices: 1 and 8 , Neighbouring Tiles: Fields with number 12 (only 1 tile),
-				Current Building: None, Harbour: Ore 2:1
+				Harbour: Ore 2:1
 		"""
 		return self.crossings
 
@@ -210,7 +360,17 @@ class Crossings:
 		"""
 		return self.neighbouring_crossings
 
-	def get_state(self):
+	def get_neighbouring_tiles(self):
+		"""
+		Returns neighbouring_tiles
+
+		:return:
+			list(list(int))
+				Indices of the tiles adjacent to each crossing.
+		"""
+		return self.neighbouring_tiles
+
+	def get_building_state(self):
 		"""
 		Returns relevant state information about the crossings, namely what building is placed at each crossing.
 
@@ -219,7 +379,7 @@ class Crossings:
 				Building type: 0 - no building, 1 - Settlement P1, 2 - Settlement P2, 3 - Settlement P3, 4 - Settlement P4
 				5 - City P1, 6 - City P2, 7 - City P3, 8 - City P4
 		"""
-		return list(list(zip(*self.crossings))[2])
+		return self.building_state
 
 class Roads:
 	def __init__(self,neighbouring_crossings):
@@ -235,7 +395,8 @@ class Roads:
 				roads.append(conn)
 		roads = list(set(tuple(road) for road in roads))
 		roads.sort()
-		self.roads = list(zip(roads,[0]*len(roads)))
+		self.roads = roads
+		self.road_state = [0]*len(roads)
 
 	def get_roads(self):
 		"""
@@ -248,7 +409,7 @@ class Roads:
 				Road type: 0 - no road, 1 - Road P1, 2 - Road P2, 3 - Road P3, 4 - Road P4
 
 		"""
-		return self.roads
+		return np.array(self.roads)
 
 	def get_state(self):
 		"""
@@ -258,4 +419,7 @@ class Roads:
 			list(int) (length 72)
 				Road type: 0 - no road, 1 - Road P1, 2 - Road P2, 3 - Road P3, 4 - Road P4
 		"""
-		return list(list(zip(*self.roads))[1])
+		return np.array(self.road_state)
+
+	def place_road(self,road_index,player_num):
+		self.road_state[road_index] = player_num
