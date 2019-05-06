@@ -1,19 +1,23 @@
 from Game import *
-from Game import Hex_tiles
-from Game import Crossings,Roads
-g = Game(random_init=True)
+
+def test_road_build_possibilities():
+    g = Game(random_init=True)
+    g.place_settlement(8,1)
+    g.place_road(12,1)
+    g.place_road(13,1)
+    g.place_road(14,1)
+
+    g.place_road(7,3)
+    g.place_road(6,3)
 
 
-g.roll_dice()
-g.roll_dice()
-g.roll_dice()
+    p3_roads = g.roads.get_possible_actions_build_road(3)
+    assert sum(p3_roads) == 4
 
-conns = g.roads.get_roads()
-r_s = g.roads.get_state()
+    p2_roads = g.roads.get_possible_actions_build_road(2)
+    assert sum(p2_roads) == 0
 
-print(conns[r_s==1])
+    p1_roads = g.roads.get_possible_actions_build_road(1)
+    assert sum(p1_roads) == 6
 
-print(np.unique(conns[r_s==2]))
-
-crossings_connected = g.get_possible_actions_build_settlement(1)
-print(crossings_connected)
+test_road_build_possibilities()
