@@ -44,11 +44,12 @@ class Crossings:
             for ele in h:
                 harbours_lst[ele] = t
         self.crossings = list(zip(self.neighbouring_crossings,connected_tiles,harbours_lst))
-        self.building_state = [0]*len(connected_tiles)
+        self.building_state = np.array([0]*len(connected_tiles))
 
 
     def place_settlement(self,crossing_index,player_num):
         self.building_state[crossing_index] = player_num
+        self.building_state[self.neighbouring_crossings[crossing_index]] = 9
 
 
     def get_crossings(self):
@@ -90,48 +91,16 @@ class Crossings:
         :return:
             list(int) (length 54)
                 Building type: 0 - no building, 1 - Settlement P1, 2 - Settlement P2, 3 - Settlement P3, 4 - Settlement P4
-                5 - City P1, 6 - City P2, 7 - City P3, 8 - City P4
+                5 - City P1, 6 - City P2, 7 - City P3, 8 - City P4, 9 - No building possible
         """
         return self.building_state
 
-    def get_possible_actions_build_settlement(self,player_num):
-        """
-        Returns all locations where settlement can be placed by the given player.
+    def create_connected_roads(self,crossings_connected_to_road):
+        self.connected_roads =[[] for i in range(Defines.NUM_CROSSINGS)]
+        for i in range(len(crossings_connected_to_road)):
+            self.connected_roads[crossings_connected_to_road[i,0]].append(i)
+            self.connected_roads[crossings_connected_to_road[i,1]].append(i)
 
-        :param player_num:
-            Number of the player.
 
-        :return valid_crossings:
-            list(int) list of all crossing indexes where a settlement is allowed to be placed
-                by this player
-        """
-        # Exception needed for initialization settlements
-        ##############################################
-
-        # Find all crossings a road of this player is connected to
-        crossings_connected_to_roads = np.unique(self.get_roads()[self.get_state()==player_num])
-
-        valid_crossings = np.zeros(Defines.NUM_CROSSINGS)
-
-        # Iterate through all crossings a road of this player is connected to
-        for crossing in crossings_connected_to_roads:
-            valid_crossings[crossing] = 1 # assuming it is valid
-
-            # Checks if there is a building on this crossing
-            if self.building_state[crossing]>0:
-                # If there is, the crossing is not valid for placing a settlement
-                valid_crossings[crossing] = 0
-                continue
-
-            # Iterate through all crossings connected to this crossing
-            for first_crossing in self.get_neighbouring_crossings()[crossing]:
-
-                # Checks if there is a building on this crossing
-                if self.building_state[first_crossing]>0:
-
-                    # If there is, the crossing is not valid for placing a settlement
-                    valid_crossings[crossing] = 0
-                    break
-
-        # Returns the remaining valid crossings
-        return valid_crossings
+    def get_connected_roads(self):
+        return self.connected_roads

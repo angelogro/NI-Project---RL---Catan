@@ -7,6 +7,7 @@ from scipy.sparse import coo_matrix
 from Roads import Roads
 from Crossings import Crossings
 from HexTiles import HexTiles
+import Defines
 
 class Game:
 
@@ -14,8 +15,10 @@ class Game:
 		self.tiles = HexTiles(random_init)
 		self.crossings = Crossings(self.tiles.get_tiles(),self.tiles.harbours)
 		self.roads = Roads(self.crossings.get_neighbouring_crossings())
+		self.crossings.create_connected_roads(self.roads.get_roads())
 		self.building_state = self.crossings.get_building_state()
 		self.dices_results = [2,3,3,4,4,4,5,5,5,5,6,6,6,6,6,7,7,7,7,7,7,8,8,8,8,8,9,9,9,9,10,10,10,11,11,12]
+
 
 		self.cards = np.zeros((4,5))
 
@@ -140,6 +143,89 @@ class Game:
 	def place_road(self,road_index,player_num):
 		self.roads.place_road(road_index,player_num)
 		pass
+
+	def get_possible_actions_build_settlement(self,player_num,init_state=False):
+		"""
+        Returns all locations where settlement can be placed by the given player.
+
+        :param player_num:
+            Number of the player.
+
+        :return valid_crossings:
+            list(int) list of all crossing indexes where a settlement is allowed to be placed
+                by this player
+        """
+		valid_crossings = np.zeros(Defines.NUM_CROSSINGS)
+
+		# Exception needed for initialization settlements
+		##############################################
+		if init_state:
+			return self.crossings.get_building_state()==0
+
+		# Find all crossings a road of this player is connected to
+		crossings_connected_to_roads = np.unique(self.roads.get_roads()[self.roads.get_state()==player_num])
+
+		# Iterate through all crossings a road of this player is connected to
+		for crossing in crossings_connected_to_roads:
+			valid_crossings[crossing] = 1 # assuming it is valid
+
+			# Checks if there is a building on this crossing
+			if self.crossings.building_state[crossing]>0:
+				# If there is, the crossing is not valid for placing a settlement
+				valid_crossings[crossing] = 0
+				continue
+
+			# Iterate through all crossings connected to this crossing
+			for first_crossing in self.crossings.get_neighbouring_crossings()[crossing]:
+
+				# Checks if there is a building on this crossing
+				if self.crossings.building_state[first_crossing]>0 and self.crossings.building_state[first_crossing]<9:
+
+					# If there is, the crossing is not valid for placing a settlement
+					valid_crossings[crossing] = 0
+					break
+
+		# Returns the remaining valid crossings
+		return valid_crossings
+
+	def get_possible_actions_build_road(self,player_num,init_state = False):
+		"""
+		Returns a vector of zeros of length of amount of roads.
+		with ones on indices where roads can be placed by the given player.
+
+		:param player_num:
+			Number of the player.
+		"""
+		# Exception needed for initialization roads
+		##############################################
+		if init_state == True:
+			# Find the settlement without a road close to it
+			# Find indices of crossings with buildings
+			ind_with_buildings = np.ravel(np.argwhere(self.crossings.get_building_state()==player_num))
+
+			for crossing_index in ind_with_buildings:
+				connected_roads = self.roads.get_state()
+				print(self.crossings.connected_roads[crossing_index])
+				print(connected_roads[self.crossings.connected_roads[crossing_index]])
+				if np.sum(connected_roads[self.crossings.connected_roads[crossing_index]])==0:
+					final_arr = np.zeros(Defines.NUM_EDGES)
+					final_arr[self.crossings.connected_roads[crossing_index]]=1
+					return final_arr
+
+		# Find all roads of player player_num and look for edges they are connected to
+		conn_roads = np.array(self.roads.connected_roads)
+		road_state = np.array(self.roads.road_state)
+		list_conn = conn_roads[np.where(road_state==player_num)]
+
+		# Convert those connected edges to an array of zeros with a one where a road can be placed
+		final_list = []
+		for lst in list_conn:
+			final_list.extend(lst)
+		final_arr = np.zeros(Defines.NUM_EDGES)
+		final_arr[final_list]=1
+
+		# Exclude all occupied edges from the list of connected edges and return result
+		return np.logical_and(np.logical_not(road_state),final_arr)
 
 
 
