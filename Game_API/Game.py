@@ -20,15 +20,23 @@ class Game:
 		self.dices_results = [2,3,3,4,4,4,5,5,5,5,6,6,6,6,6,7,7,7,7,7,7,8,8,8,8,8,9,9,9,9,10,10,10,11,11,12]
 
 
+		# 4 players, 5 resources
 		self.cards = np.zeros((4,5))
 
+		self.current_player = 1
 
+	def next_players_turn(self):
+		self.current_player =  self.current_player + 1 if self.current_player < 4 else 1
 
 	# returns nextState,reward and whether the game is finished
 	# General function which should be implemented at the end.
 	def step(self,action):
 
-		return None
+		# Make state transition
+		self.perform_action(action)
+		# If action is 'Do Nothing'
+		self.next_players_turn()
+		pass
 
 	# OLD FUNCTION, CAN DEFINITELY BE REMOVED
 	def get_possibleActions(self,player_num):
@@ -136,12 +144,19 @@ class Game:
 
 	# Placeholder
 	def place_settlement(self,crossing_index,player_num):
+		self.pay(player_num,buying_good='Settlement')
 		self.crossings.place_settlement(crossing_index,player_num)
 		pass
 
 	#Placeholder
 	def place_road(self,road_index,player_num):
+		self.pay(player_num,buying_good='Road')
 		self.roads.place_road(road_index,player_num)
+		pass
+
+	def place_city(self,crossing_index,player_num):
+		self.pay(player_num,buying_good='City')
+		self.crossings.place_city(crossing_index,player_num)
 		pass
 
 	def get_possible_actions_build_settlement(self,player_num,init_state=False):
@@ -229,9 +244,58 @@ class Game:
 		# Exclude all occupied edges from the list of connected edges and return result
 		return np.logical_and(np.logical_not(road_state),final_arr)
 
+	def check_resources_available(self,player_num,buying_good):
+		"""
+        Check availability of resources for the specific buying good.
 
+        :param player_num:
+            Number of the player.
 
+				buying_good:
+			One of the following: 'Road', 'Settlement', 'City', 'Development Card'
+        """
+		if buying_good=='Road':
+			return (self.cards[player_num-1,:]>=np.array([0,0,0,1,1])).all()
+		if buying_good=='Settlement':
+			return (self.cards[player_num-1,:]>=np.array([1,1,0,1,1])).all()
+		if buying_good=='City':
+			return (self.cards[player_num-1,:]>=np.array([2,0,3,0,0])).all()
+		if buying_good=='Development Card':
+			return (self.cards[player_num-1,:]>=np.array([1,1,1,0,0])).all()
 
+	def pay(self,player_num,buying_good):
+		"""
+        Reduces the cards of others player by the amount needed for the resources.
+
+        :param player_num:
+            Number of the player.
+
+				buying_good:
+			One of the following: 'Road', 'Settlement', 'City', 'Development Card'
+        """
+		if buying_good=='Road':
+			self.cards[player_num-1,:]-np.array([0,0,0,1,1])
+		if buying_good=='Settlement':
+			self.cards[player_num-1,:]-np.array([1,1,0,1,1])
+		if buying_good=='City':
+			self.cards[player_num-1,:]-np.array([2,0,3,0,0])
+		if buying_good=='Development Card':
+			self.cards[player_num-1,:]-np.array([1,1,1,0,0])
+
+	def get_possible_actions_build_city(self,player_num):
+		"""
+        Returns all locations where cities can be placed by the given player.
+
+        :param player_num:
+            Number of the player.
+
+        :return valid_crossings:
+            list(int) list of all crossing indexes where a city is allowed to be placed
+                by this player
+        """
+		valid_crossings = self.crossings.get_building_state()==player_num
+		# Returns the remaining valid crossings
+		return valid_crossings
 
 
 

@@ -48,6 +48,17 @@ class Crossings:
 
 
     def place_settlement(self,crossing_index,player_num):
+        """
+        Places a settlement on the respective crossing and sets the state of the surrounding
+        crossings to 9 (not possible to build here anymore)
+
+        :param crossing_index:
+			Index on which the settlement is placed
+
+			    player_num:
+			Player number
+
+        """
         self.building_state[crossing_index] = player_num
         self.building_state[self.neighbouring_crossings[crossing_index]] = 9
 
@@ -117,3 +128,16 @@ class Crossings:
 			Vector of list of edges connected to each crossing
         """
         return self.connected_roads
+
+    def place_city(self,crossing_index,player_num):
+        """
+        Places a city on the respective crossing.
+
+        :param crossing_index:
+			Index on which the settlement is placed
+
+			    player_num:
+			Player number
+
+        """
+        self.building_state[crossing_index] = player_num + 4
