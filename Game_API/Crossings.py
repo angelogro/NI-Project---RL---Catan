@@ -96,6 +96,13 @@ class Crossings:
         return self.building_state
 
     def create_connected_roads(self,crossings_connected_to_road):
+        """
+        Creates the class variable connected_roads containing the edge indices of edges connected to this crossing.
+
+        :param crossings_connected_to_road:
+			Vector of crossings chich are connected to each road
+
+        """
         self.connected_roads =[[] for i in range(Defines.NUM_CROSSINGS)]
         for i in range(len(crossings_connected_to_road)):
             self.connected_roads[crossings_connected_to_road[i,0]].append(i)
@@ -103,4 +110,10 @@ class Crossings:
 
 
     def get_connected_roads(self):
+        """
+        Returns the class variable connected_roads containing the edge indices of edges connected to this crossing.
+
+        :return connected_road:
+			Vector of list of edges connected to each crossing
+        """
         return self.connected_roads

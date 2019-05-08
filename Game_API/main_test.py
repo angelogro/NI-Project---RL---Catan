@@ -21,7 +21,8 @@ def test_road_build_possibilities():
     p1_roads = g.get_possible_actions_build_road(1)
     assert sum(p1_roads) == 6
 
-#test_road_build_possibilities()
+test_road_build_possibilities()
+
 
 def test_init_placing():
     g = Game(random_init=True)
@@ -41,8 +42,6 @@ def test_init_placing():
     possible_roadarray = np.zeros(Defines.NUM_EDGES)
     possible_roadarray[possible_road_indices] = 1
 
-
-    print(g.roads.get_roads())
     #Testing if roads can be placed at the correct places
     np.testing.assert_equal(g.get_possible_actions_build_road(1,init_state=True),possible_roadarray)
 
@@ -60,23 +59,10 @@ def test_settlement_placing():
     g.place_road(15,1)
     g.place_road(17,1)
 
-    print(g.get_possible_actions_build_settlement(2))
-    print(g.get_possible_actions_build_settlement(1))
     assert sum(g.get_possible_actions_build_settlement(2))==2
     assert sum(g.get_possible_actions_build_settlement(1))==1
 
-#test_settlement_placing()
+test_settlement_placing()
 
-g = Game(random_init=True)
-g.place_settlement(10,1)
-g.place_settlement(8,1)
-g.place_road(10,1)
-g.place_settlement(14,2)
-g.place_road(9,2)
 
-print(g.roads.get_roads())
-print(g.roads.get_state())
-print(g.crossings.get_building_state())
-
-g.get_possible_actions_build_road(1,init_state=True)
 

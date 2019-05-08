@@ -157,8 +157,7 @@ class Game:
         """
 		valid_crossings = np.zeros(Defines.NUM_CROSSINGS)
 
-		# Exception needed for initialization settlements
-		##############################################
+		# On Initialization
 		if init_state:
 			return self.crossings.get_building_state()==0
 
@@ -196,21 +195,24 @@ class Game:
 		:param player_num:
 			Number of the player.
 		"""
-		# Exception needed for initialization roads
-		##############################################
+		# On initialization
 		if init_state == True:
 			# Find the settlement without a road close to it
 			# Find indices of crossings with buildings
 			ind_with_buildings = np.ravel(np.argwhere(self.crossings.get_building_state()==player_num))
 
+			# Loop through all settlement of this player
 			for crossing_index in ind_with_buildings:
 				connected_roads = self.roads.get_state()
-				print(self.crossings.connected_roads[crossing_index])
-				print(connected_roads[self.crossings.connected_roads[crossing_index]])
+
+				# If no road connected to the settlement yet...
 				if np.sum(connected_roads[self.crossings.connected_roads[crossing_index]])==0:
 					final_arr = np.zeros(Defines.NUM_EDGES)
 					final_arr[self.crossings.connected_roads[crossing_index]]=1
 					return final_arr
+			return
+
+		# During normal gameplay...
 
 		# Find all roads of player player_num and look for edges they are connected to
 		conn_roads = np.array(self.roads.connected_roads)
