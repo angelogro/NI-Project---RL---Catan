@@ -44,32 +44,20 @@ class Game:
 		pass
 
 	# OLD FUNCTION, CAN DEFINITELY BE REMOVED
-	def get_possibleActions(self,player_num):
-		#self.crossings_state = self.crossings.get_state()
-		self.road_state = self.roads.get_state()
+	def get_possible_actions(self,player_num):
+		possible_actions = self.get_possible_actions_build_road(player_num)*1
+		possible_actions = np.concatenate((possible_actions,self.get_possible_actions_build_settlement(player_num)*1))
+		possible_actions = np.concatenate((possible_actions,self.get_possible_actions_build_city(player_num)*1))
+		return possible_actions
 
-		# Initial placement
-		actions =self.check_initialSettlement(player_num)
-
-		actions+=self.check_place_road(player_num)
-		return None
-
-	# OLD FUNCTION, CAN DEFINITELY BE REMOVED
-	def check_initialSettlement(self,player_num):
-		# Returns actions array [DoNothing,placeInitSettlement,placeInitRoad]
-		num_initsettlements = sum(self.crossings_state[self.crossings_state==player_num])
-
-		if num_initsettlements<=2:
-			if sum(self.road_state[self.road_state==player_num])<num_initsettlements:
-				return [0,0,1]
-			else:
-				if num_initsettlements <2:
-					return [0,1,0]
-		return [1,0,0]
-
-	def check_place_road(self,player_num):
-		# Returns actions array [PlaceRoad@0,PlaceRoad@1,PlaceRoad@2 ....,PlaceRoad@71]
-		pass
+	def take_action(self,chosen_action_ind,player_num):
+		# This is ugly and just for testing purposes...
+		if chosen_action_ind < 72:
+			self.place_road(chosen_action_ind,player_num)
+		elif chosen_action_ind < (72+54):
+			self.place_settlement(chosen_action_ind-72,player_num)
+		else:
+			self.place_city(chosen_action_ind-72-54,player_num)
 
 	def roll_dice(self):
 		"""
@@ -101,16 +89,16 @@ class Game:
 		# Go through all crossings
 		for i in range(len(crossings)):
 			# Checks if there is no building on the crossing
-			if buildings[i] == 0:
+			if buildings[i] == 0 or buildings[i] == 9:
 				continue
 			# Iterate through all neighbouring tiles of the crossing
 			for tile in crossings[i][1]:
 				# If the rolled number is a number chip on one of those crossings
 				if tile[1]==number:
-					self.add_resource(tile[0]-1,(buildings[i]%4)-1)
+					self.add_resource(tile[0],(buildings[i]%4)-1)
 					# If it is a town, add one more resource
 					if buildings[i] > 4:
-						self.add_resource(tile[0]-1,(buildings[i]%4)-1)
+						self.add_resource(tile[0],(buildings[i]%4)-1)
 
 
 	def add_resource(self,resource_type,player_num):

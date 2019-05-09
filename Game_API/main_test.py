@@ -95,3 +95,66 @@ def test_city_placing():
 
 test_city_placing()
 
+
+def test_develop_one_player():
+    # Using the initial fixed setup
+    g = Game(random_init=False)
+
+    # Putting settlement and roads to places so that all resources are accessible
+    g.place_settlement(42,1)
+    g.place_settlement(35,1)
+    g.place_settlement(19,1)
+    g.place_road(36,1)
+    g.place_road(38,1)
+    g.place_road(14,1)
+
+    # Iterate some turns for player and letting it sample randomly from all possible actions
+    for i in range(10):
+        g.roll_dice() # automatically distributes resources
+        print(g.get_possible_actions_build_road(1)*1)
+        actions = g.get_possible_actions(1)
+        if sum(actions)>=1:
+            chosen_action = np.random.choice(len(actions), 1, p=actions/sum(actions))
+            g.take_action(chosen_action[0],1)
+
+    print("From test_develop_one_player() :" )
+    print(g.cards)
+    print(g.building_state)
+    print(g.roads.get_state())
+
+test_develop_one_player()
+
+def test_develop_two_player():
+    # Using the initial fixed setup
+    g = Game(random_init=False)
+
+    # Putting settlement and roads to places so that all resources are accessible
+    g.place_settlement(42,1)
+    g.place_settlement(35,1)
+
+    g.place_road(36,1)
+    g.place_road(38,1)
+
+    g.place_settlement(40,2)
+    g.place_settlement(13,2)
+
+    g.place_road(18,2)
+    g.place_road(44,2)
+
+
+    # Iterate some turns for player and letting it sample randomly from all possible actions
+    for i in range(20):
+        g.current_player = 1 if g.current_player == 2 else 2
+        g.roll_dice() # automatically distributes resources
+        actions = g.get_possible_actions(g.current_player)
+        if sum(actions)>=1:
+            chosen_action = np.random.choice(len(actions), 1, p=actions/sum(actions))
+            g.take_action(chosen_action[0],g.current_player)
+
+    # As player 2 is intially worsely placed than player 1 we expect him to have fewer buildings and resources
+    print("From test_develop_two_player() :" )
+    print(g.cards)
+    print(g.building_state)
+    print(g.roads.get_state())
+
+test_develop_two_player()
