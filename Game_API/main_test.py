@@ -1,6 +1,19 @@
 from Game import *
 import Defines
 
+def test_rob():
+	g = Game(random_init=False)
+	g.place_settlement(10, 1)
+	g.place_settlement(19, 2)
+	g.place_settlement(21, 3)
+	g.place_settlement(13, 4)
+	
+	g.set_robber_position(4)
+	
+	print("Robber State " ,g.get_robber_state())
+	print("Building state ", g.building_state)
+	print("Robable players ", g.rob_person(1))
+	
 def test_road_build_possibilities():
     g = Game(random_init=True)
     g.place_settlement(8,1)
@@ -21,7 +34,7 @@ def test_road_build_possibilities():
     p1_roads = g.get_possible_actions_build_road(1)
     assert sum(p1_roads) == 6
 
-test_road_build_possibilities()
+#test_road_build_possibilities()
 
 
 def test_init_placing():
@@ -45,7 +58,7 @@ def test_init_placing():
     #Testing if roads can be placed at the correct places
     np.testing.assert_array_equal(g.get_possible_actions_build_road(1,init_state=True),possible_roadarray)
 
-test_init_placing()
+#test_init_placing()
 
 def test_settlement_placing():
     g = Game(random_init=True)
@@ -62,7 +75,7 @@ def test_settlement_placing():
     assert sum(g.get_possible_actions_build_settlement(2))==2
     assert sum(g.get_possible_actions_build_settlement(1))==1
 
-test_settlement_placing()
+#test_settlement_placing()
 
 
 def test_city_placing():
@@ -93,7 +106,7 @@ def test_city_placing():
 
     np.testing.assert_array_equal(g.get_possible_actions_build_city(2),possible_array)
 
-test_city_placing()
+#test_city_placing()
 
 
 def test_develop_one_player():
@@ -122,7 +135,7 @@ def test_develop_one_player():
     print(g.building_state)
     print(g.roads.get_state())
 
-test_develop_one_player()
+#test_develop_one_player()
 
 def test_develop_two_player():
     # Using the initial fixed setup
@@ -157,4 +170,5 @@ def test_develop_two_player():
     print(g.building_state)
     print(g.roads.get_state())
 
-test_develop_two_player()
+#test_develop_two_player()
+

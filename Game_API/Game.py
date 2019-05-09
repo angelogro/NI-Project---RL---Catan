@@ -325,7 +325,7 @@ class Game:
 		return robber_state
 
 
-def rob_person(self, player_num):
+	def rob_person(self, player_num):
 		"""
 		Return list of players possible to rob resource from
 		
@@ -339,20 +339,22 @@ def rob_person(self, player_num):
 		for n_tiles in self.crossings.neighbouring_tiles:
 			for tile in n_tiles:
 				if tile == self.robber:
-					crossing_index.append(tile)
+					crossing_index.append(self.crossings.neighbouring_tiles.index(n_tiles))
 		
+		print("Crossing index ", crossing_index)
 		possible_players = []
 		for crossing in crossing_index:
-				if building_state[crossing] != 0 or building_state[crossing] != 9:
+				if building_state[crossing] != 0 and building_state[crossing] != 9:
+					print("Crossing type ", building_state[crossing])
 					possible_players.append(building_state[crossing])
-					
+		print("Possible players ", possible_players)			
 		rob_players = [0,0,0,0]
 		for player in possible_players:
 				if player == 1 or player == 5:
 					rob_players[0] = 1
-				elif player == 2 or player = 6:
+				elif player == 2 or player == 6:
 					rob_players[1] = 1
-				elif player == 3 or player = 7:
+				elif player == 3 or player == 7:
 					rob_players[2] = 1
 				else:
 					rob_players[3] = 1
