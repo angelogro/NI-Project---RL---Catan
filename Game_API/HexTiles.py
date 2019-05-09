@@ -63,7 +63,7 @@ class HexTiles:
         ind=0
         numTilesperRow=[3,4,5,4,3]
         #				Desert   Grain  Pasture  Mountain  Hills Forrest
-        tile_dict = {'0' : 'D','1':'G','2':'P','3':'M','4':'H','5':'F'}
+        tile_dict = {'5' : 'D','0':'G','1':'P','2':'M','3':'H','4':'F'}
         for row in numTilesperRow:
             tiles_part = self.tiles[ind:ind+row]
             print(''.join([' ']*(5-row)*2),end='')
@@ -98,3 +98,7 @@ class HexTiles:
 
     def get_harbour_state(self):
         return np.array(self.harbours)
+
+    def get_desert_hex(self):
+        tiles_order = self.get_tiles()
+        return tiles_order[tiles_order == Defines.HEX_DESERT]

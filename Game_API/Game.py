@@ -23,7 +23,12 @@ class Game:
 		# 4 players, 5 resources
 		self.cards = np.zeros((4,5))
 
+		# Sets the first players turn
 		self.current_player = 1
+
+		# Initializes the robber
+		self.robber = self.set_robber_position(self.tiles.get_desert_hex())
+
 
 	def next_players_turn(self):
 		self.current_player =  self.current_player + 1 if self.current_player < 4 else 1
@@ -296,6 +301,41 @@ class Game:
 		valid_crossings = self.crossings.get_building_state()==player_num
 		# Returns the remaining valid crossings
 		return valid_crossings
+
+	def set_robber_position(self,tile_number):
+		"""
+        Puts the robber on the specified tile.
+
+        :param tile_number:
+            Number of the tile between 0 and 18.
+        """
+		self.robber = tile_number
+
+	def get_possible_action_move_robber(self):
+		"""
+        Returns all locations where the robber can be placed.
+
+        :return robber_actions:
+            np.array(binary), length 19, with a 1 representing a tile, the robber can be moved to and
+            	a 0 where it can't.
+        """
+		robber_actions = np.ones(Defines.NUM_TILES)
+		# Robber has to move away from current position
+		robber_actions[self.robber] = 0
+		return robber_actions
+
+	def get_robber_state(self):
+		"""
+        Returns the location of the robber in state representation.
+
+        :return robber_state:
+            np.array(binary), length 19, with a 1 representing the tile, where the robber is currently placed
+            	and a 0 where it isn't.
+        """
+		robber_state = np.zeros(Defines.NUM_TILES)
+		robber_state[self.robber] = 1
+		return robber_state
+
 
 
 
