@@ -1,19 +1,71 @@
 from Game import *
 import Defines
+import time
+
+def test_3vs_1_trade_all_resources_available():
+    g = Game(random_init=False)
+    g.place_settlement(27, 1) # has 3vs1 port
+    g.place_settlement(19, 2) # has no port
+    g.place_settlement(21, 3)
+    g.place_settlement(13, 4)
+    g.cards[0,0]=3 # giving the player 0 3 grain
+    g.cards[0,1]=3 # giving him also 3 wool
+    g.cards[0,2]=3
+    g.cards[0,3]=3
+    g.cards[0,4]=3
+
+    g.cards[1,:] = np.array([3,3,3,3,3])
+
+    g.create_possible_trade_sets_3vs1()
+    s = time.time()
+    possible_actions = g.get_possible_actions_trade_3vs1(1)
+    e = time.time()
+    print(e-s)
+    assert sum(possible_actions) == 100
+
+    possible_actions = g.get_possible_actions_trade_3vs1(2)
+    assert sum(possible_actions) == 0
+
+
+test_3vs_1_trade_all_resources_available()
+
+def test_3vs_1_trade_all_some_resources():
+    g = Game(random_init=False)
+    g.place_settlement(10, 1)
+    g.place_settlement(19, 2)
+    g.place_settlement(21, 3)
+    g.place_settlement(13, 4)
+    g.cards[0,0]=1 # 1 grain
+    g.cards[0,1]=1 # 1 wool
+    g.cards[0,2]=1 # 1 ore
+
+    g.create_possible_trade_sets_3vs1()
+    possible_actions = g.get_possible_actions_trade_3vs1(1)
+    # Should only be possible to trade against wood and brick...
+    assert sum(possible_actions) == 2
 
 def test_rob():
-	g = Game(random_init=False)
-	g.place_settlement(10, 1)
-	g.place_settlement(19, 2)
-	g.place_settlement(21, 3)
-	g.place_settlement(13, 4)
+    g = Game(random_init=False)
+    g.place_settlement(10, 1)
+    g.place_settlement(19, 2)
+    g.place_settlement(21, 3)
+    g.place_settlement(13, 4)
+    g.cards[1,0] = 1 #give player 1 one grain
+    g.set_robber_position(4)
 	
-	g.set_robber_position(4)
-	
-	print("Robber State " ,g.get_robber_state())
-	print("Building state ", g.building_state)
-	print("Robable players ", g.rob_person(1))
-	
+    print("Robber State " ,g.get_robber_state())
+
+    print("Building state ", g.building_state)
+    print("Robable players ", g.get_possible_actions_rob_player(1))
+    print("Robable players ", g.rob_person(1))
+
+test_rob()
+
+
+
+
+
+
 def test_road_build_possibilities():
     g = Game(random_init=True)
     g.place_settlement(8,1)

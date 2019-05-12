@@ -46,6 +46,9 @@ class Crossings:
         self.crossings = list(zip(self.neighbouring_crossings,connected_tiles,harbours_lst))
         self.building_state = np.array([0]*len(connected_tiles))
 
+        self.crossings_per_tile = []
+        self.create_crossings_per_tile()
+
 
     def place_settlement(self,crossing_index,player_num):
         """
@@ -141,3 +144,22 @@ class Crossings:
 
         """
         self.building_state[crossing_index] = player_num + 4
+
+    def create_crossings_per_tile(self):
+        """
+        Creates the 6 crossing indices for each tile out of the neighbouring_tiles variable
+        """
+        self.crossings_per_tile = [[] for i in range(Defines.NUM_TILES)]
+        for j in range(len(self.neighbouring_tiles)):
+            for tiles in self.neighbouring_tiles[j]:
+                self.crossings_per_tile[tiles].append(j)
+        self.crossings_per_tile = np.array(self.crossings_per_tile)
+
+    def get_crossings_per_tile(self):
+        """
+        Returns the class variable crossings_per_tile containing all 6 crossing indices for each tile.
+
+        :return crossings_per_tile:
+			2D numpy array tile_index x crossing_index
+        """
+        return self.crossings_per_tile

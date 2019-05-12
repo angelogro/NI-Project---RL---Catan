@@ -1,13 +1,14 @@
 
 # used to shuffle the deck of hexes
 import random
-
+import itertools
 import numpy as np
 from scipy.sparse import coo_matrix
 from Roads import Roads
 from Crossings import Crossings
 from HexTiles import HexTiles
 import Defines
+
 
 class Game:
 
@@ -362,6 +363,116 @@ class Game:
 		# self robbing not allowed
 		rob_players[player_num-1] = 0
 		return rob_players
+
+	def get_possible_actions_rob_player(self,player_num):
+		"""
+		Return list of players possible to rob resource from. Checking if player even has resources is performed
+		also now.
+
+		:return rob_players:
+			np.array(binary), length 4, with 1 representing person which is robable, 0 not rob
+		"""
+		robber_crossings = self.crossings.get_crossings_per_tile()[self.robber,:]
+		cross_state = self.crossings.building_state[robber_crossings]
+		possible_players = []
+		for crossing in cross_state:
+			if crossing != 0 and crossing != 9:
+				print("Crossing type ", crossing)
+				possible_players.append(crossing)
+		print("Possible players ", possible_players)
+		rob_players = [0,0,0,0]
+		for player in possible_players:
+			if player == 1 or player == 5:
+				if sum(self.cards[0,:])>0:
+					rob_players[0] = 1
+			elif player == 2 or player == 6:
+				if sum(self.cards[1,:])>0:
+					rob_players[1] = 1
+			elif player == 3 or player == 7:
+				if sum(self.cards[2,:])>0:
+					rob_players[2] = 1
+			elif player == 4 or player == 8:
+				if sum(self.cards[3,:])>0:
+					rob_players[3] = 1
+
+		# self robbing not allowed
+		rob_players[player_num-1] = 0
+
+		return np.array(rob_players)
+
+	def get_possible_actions_trade_bank(self,player_num):
+		"""
+		Return list of possible trades to be done with the bank.
+
+		:return trade_bank_arr:
+			np.array(binary), length 20, with 1 representing a trade is possible.
+			Representation:
+
+			Grain against			Wool NOT against		Ore against
+			Wool Ore Brick Wood		Grain Ore Brick Wood	Grain Wool Brick Wood
+			[1 1 1 1                0 0 0 0 				1 1 1 1 ...]
+		"""
+
+		trade_bank_array = np.repeat(self.cards[player_num-1,:] >= 4,4)
+		return trade_bank_array
+
+	def get_possible_actions_trade_3vs1(self,player_num):
+		"""
+		Return list of possible trades to be done via 3vs1 trade. It is checked whether the player
+		has a settlement on a 3vs1 port
+
+		:return trade_3vs1_arr:
+			vector of length 100 (5 Resource type x 20 combinations of remaining resources each)
+			with a 1 where the set of three cards is on the players hand.
+		"""
+		possible_actions = [0]*100
+
+		if not self.has_3vs1_port(player_num):
+			return np.array(possible_actions)
+
+		non_zero_card_indices = np.nonzero(self.cards[player_num-1,:])[0]
+		iter_cards = np.array([])
+		for j in non_zero_card_indices:
+			iter_cards =np.concatenate((iter_cards,np.repeat(j,self.cards[player_num-1,j])))
+
+		card_sets = set(itertools.combinations(tuple(iter_cards),3))
+		for j in range(len(self.trade_3vs1_list)):
+			temp_list = sorted(self.trade_3vs1_list[j])
+			for i in range(len(temp_list)):
+				if temp_list[i] in card_sets:
+					possible_actions[i+20*j] = 1
+		return np.array(possible_actions)
+
+	def create_possible_trade_sets_3vs1(self):
+		"""
+		Creates a list of length 5 (Number of resources) each containing a sorted set of sets.
+		Each sorted set of sets index corresponds to the resource you want to obtain by trading.
+		The inner sets contain 3 numbers corresponding to the resources you want to trade.
+
+		Example:
+			self.trade_3vs1_list = [{(1,1,1), (1,1,2), (1,1,3) ... (3,4,4), (4,4,4)},   <-- Set 0 corresponds to grain. Its inner sets therefore do not contain zeros
+									{(0,0,0), (0,0,2), (0,0,3) ... (3,4,4), (4,4,4)},   <-- Set 1 corresponds to wool. Its inner sets therefore do not contain ones
+		"""
+		grain_3vs1 = set(sorted(set(itertools.combinations((1,1,1, 2,2,2, 3,3,3, 4,4,4), 3))))
+		wool_3vs1 = set(sorted(set(itertools.combinations((0,0,0, 2,2,2, 3,3,3, 4,4,4), 3))))
+		ore_3vs1= set(sorted(set(itertools.combinations(( 0,0,0,1,1,1, 3,3,3, 4,4,4), 3))))
+		brick_3vs1 = set(sorted(set(itertools.combinations((0,0,0,1,1,1, 2,2,2,  4,4,4), 3))))
+		wood_3vs1 = set(sorted(set(itertools.combinations((0,0,0,1,1,1, 2,2,2, 3,3,3 ), 3))))
+		self.trade_3vs1_list = [grain_3vs1,wool_3vs1,ore_3vs1,brick_3vs1,wood_3vs1]
+
+	def has_3vs1_port(self,player_num):
+		building_state =self.crossings.get_building_state()*(self.crossings.get_building_state()<9)
+		settlement_state = (building_state==(player_num))+(building_state==(player_num%4))
+
+		harbour_state = list(zip(*self.crossings.get_crossings()))[2]
+		return np.any((harbour_state*settlement_state==Defines.PORT_ANY))
+
+	def get_possible_actions_trade_2vs1(self):
+		# TBD
+		pass
+
+
+
 
 
 
