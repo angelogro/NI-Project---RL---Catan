@@ -2,6 +2,74 @@ from Game import *
 import Defines
 import time
 
+def test_discard_robbed_cards_no_cards():
+    g = Game(random_init=False)
+    g.place_settlement(10, 1)
+    g.discard_resources()
+    assert sum(g.cards[0,:])==0
+
+test_discard_robbed_cards_no_cards()
+
+def test_discard_robbed_cards_few_cards():
+    g = Game(random_init=False)
+    g.place_settlement(10, 1)
+    g.cards[0,:] = [1,2,2,0,1]
+    g.discard_resources()
+    assert sum(g.cards[0,:])==6
+
+test_discard_robbed_cards_few_cards()
+
+def test_discard_robbed_cards_enough_cards():
+    g = Game(random_init=False)
+    g.place_settlement(10, 1)
+    g.cards[0,:] = [5,5,5,5,5]
+    g.discard_resources()
+    assert sum(g.cards[0,:])==13
+
+test_discard_robbed_cards_enough_cards()
+
+def test_2vs_1_trade_noresources():
+    g = Game(random_init=False)
+    g.place_settlement(10, 1)
+    assert sum(g.get_possible_actions_trade_2vs1(1))==0
+
+test_2vs_1_trade_noresources()
+
+def test_2vs_1_trade_resources_no_port():
+    g = Game(random_init=False)
+    g.place_settlement(10, 1)
+    g.cards[0,:] = [5,5,5,5,5]
+    assert sum(g.get_possible_actions_trade_2vs1(1))==0
+
+test_2vs_1_trade_resources_no_port()
+
+def test_2vs_1_trade_noresources_but_port():
+    g = Game(random_init=False)
+    g.place_settlement(0, 1)
+    assert sum(g.get_possible_actions_trade_2vs1(1))==0
+
+test_2vs_1_trade_noresources_but_port()
+
+def test_2vs_1_trade_resources_and_1port():
+    g = Game(random_init=False)
+    g.place_settlement(0, 1) # has ore-port
+    g.cards[0,2] = 3 # has 3 ore
+    assert sum(g.get_possible_actions_trade_2vs1(1))==4 # possible trade against 4 resources
+
+test_2vs_1_trade_resources_and_1port()
+
+def test_2vs_1_trade_resources_and_3port():
+    g = Game(random_init=False)
+    g.place_settlement(0, 1) # has ore-port
+    g.place_city(4, 1) # has wool-port
+    g.place_settlement(45, 1) # has grain-port
+    g.cards[0,2] = 3 # has 3 ore
+    g.cards[0,1] = 2 # has 2 wool
+    g.cards[0,0] = 4 # has 2 grain
+    assert sum(g.get_possible_actions_trade_2vs1(1))==12 # possible trade against 4 resources
+
+test_2vs_1_trade_resources_and_3port()
+
 def test_3vs_1_trade_all_resources_available():
     g = Game(random_init=False)
     g.place_settlement(27, 1) # has 3vs1 port
@@ -29,9 +97,9 @@ def test_3vs_1_trade_all_resources_available():
 
 test_3vs_1_trade_all_resources_available()
 
-def test_3vs_1_trade_all_some_resources():
+def test_3vs_1_trade_some_resources():
     g = Game(random_init=False)
-    g.place_settlement(10, 1)
+    g.place_settlement(27, 1)
     g.place_settlement(19, 2)
     g.place_settlement(21, 3)
     g.place_settlement(13, 4)
@@ -43,6 +111,10 @@ def test_3vs_1_trade_all_some_resources():
     possible_actions = g.get_possible_actions_trade_3vs1(1)
     # Should only be possible to trade against wood and brick...
     assert sum(possible_actions) == 2
+    g.cards[0,2]=0 # 1 ore
+    possible_actions = g.get_possible_actions_trade_3vs1(1)
+    assert sum(possible_actions) == 0
+test_3vs_1_trade_some_resources()
 
 def test_rob():
     g = Game(random_init=False)

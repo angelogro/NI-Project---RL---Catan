@@ -11,8 +11,8 @@ import Defines
 
 
 class Game:
-
-	def __init__(self,random_init=True):
+# no_player_trade, no_dev_cards, _no_3vs1_trade
+	def __init__(self,random_init=True,):
 		self.tiles = HexTiles(random_init)
 		self.crossings = Crossings(self.tiles.get_tiles(),self.tiles.harbours)
 		self.roads = Roads(self.crossings.get_neighbouring_crossings())
@@ -68,6 +68,9 @@ class Game:
 		"""
 		number = random.choice(self.dices_results)
 		if number == 7:
+			# This could later be replaced by get_possible_actions_discard_resources, offering some discarding heuristics
+			self.discard_resources()
+
 			# Actually here we have to make sure that the next action taken by the player will be move_robber()
 			self.move_robber()
 		else:
@@ -402,7 +405,7 @@ class Game:
 
 	def get_possible_actions_trade_bank(self,player_num):
 		"""
-		Return list of possible trades to be done with the bank.
+		Return list of possible trades to be done with the bank (4 of the same resource vs 1 of free choice).
 
 		:return trade_bank_arr:
 			np.array(binary), length 20, with 1 representing a trade is possible.
@@ -467,9 +470,58 @@ class Game:
 		harbour_state = list(zip(*self.crossings.get_crossings()))[2]
 		return np.any((harbour_state*settlement_state==Defines.PORT_ANY))
 
-	def get_possible_actions_trade_2vs1(self):
-		# TBD
-		pass
+	def has_2vs1_port(self,player_num):
+		"""
+        Get information on whether the player has a settlement/city adjacent to a 2vs1 port.
+
+        :param player_num:
+            Number of the player.
+        :return arr :
+        	Array of length 5 (resource types) with a 1 indicating that the player has such a 2vs1 port.
+        """
+		building_state =self.crossings.get_building_state()*(self.crossings.get_building_state()<9)
+		settlement_state = (building_state==(player_num))+(building_state==(player_num+4))
+		harbour_state = list(zip(*self.crossings.get_crossings()))[2]
+		has_2vs1_port = []
+		has_2vs1_port.append(np.any(((harbour_state*settlement_state)==Defines.PORT_FIELDS)))
+		has_2vs1_port.append(np.any(((harbour_state*settlement_state)==Defines.PORT_PASTURE)))
+		has_2vs1_port.append(np.any(((harbour_state*settlement_state)==Defines.PORT_MOUNTAINS)))
+		has_2vs1_port.append(np.any(((harbour_state*settlement_state)==Defines.PORT_HILLS)))
+		has_2vs1_port.append(np.any(((harbour_state*settlement_state)==Defines.PORT_FOREST)))
+		return np.array(has_2vs1_port)
+
+	def get_possible_actions_trade_2vs1(self,player_num):
+		"""
+		Return list of possible trades to be done with a port, if the (4 of the same resource vs 1 of free choice).
+
+		:return array:
+			np.array(binary), length 20, with 1 representing a trade is possible.
+			Representation:
+
+			Grain against			Wool NOT against		Ore against
+			Wool Ore Brick Wood		Grain Ore Brick Wood	Grain Wool Brick Wood
+			[1 1 1 1                0 0 0 0 				1 1 1 1 ...]
+		"""
+		has_2vs1_port = self.has_2vs1_port(player_num)
+		port_and_cards_available = has_2vs1_port * (self.cards[player_num-1,:]>=2)
+		return np.repeat(port_and_cards_available,4)
+
+	def discard_resources(self):
+		"""
+		Simple heuristic for discarding cards.
+
+		If the player has more than 7 cards he discards half of them always discarding the resource type
+		he has most of until he reaches half of his cards (+1 if uneven)
+		"""
+		for i in range(4):
+			player_cards = self.cards[i,:]
+			if sum(player_cards) > 7:
+				num_discarded_cards = int(sum(player_cards)/2)
+				for j in range(num_discarded_cards):
+					player_cards[np.argmax(player_cards)]-=1
+			self.cards[i,:] = player_cards
+
+
 
 
 

@@ -13,9 +13,9 @@ class HexTiles:
             If true the tile locations, the numbers and the harbour order will be randomized.
             Else the basic game setup is used.
         """
-        self.harbours = [Defines.HEX_MOUNTAINS,Defines.HEX_PASTURE,Defines.PORT_ANY,Defines.PORT_ANY,
-                         Defines.HEX_FIELDS,Defines.PORT_ANY,Defines.HEX_HILLS,Defines.PORT_ANY,
-                         Defines.HEX_FOREST]
+        self.harbours = [Defines.PORT_MOUNTAINS,Defines.PORT_PASTURE,Defines.PORT_ANY,Defines.PORT_ANY,
+                         Defines.PORT_FIELDS,Defines.PORT_ANY,Defines.PORT_HILLS,Defines.PORT_ANY,
+                         Defines.PORT_FOREST]
         if random_init:
             # Resource Tiles
             available_numbers = [2,3,3,4,4,5,5,6,6,8,8,9,9,10,10,11,11,12]
