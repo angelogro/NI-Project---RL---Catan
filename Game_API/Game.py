@@ -30,9 +30,20 @@ class Game:
 		# Initializes the robber
 		self.robber = self.set_robber_position(self.tiles.get_desert_hex())
 
+		# List of possible action arrays
+		# Key: action space name, Value: [get_possible_actions_function, execute_corresponding_action_function]
+		self.action_array_names_dic = {'build_road':[self.get_possible_actions_build_road,self.place_road],
+									   'build_settlement':[self.get_possible_actions_build_settlement,self.place_settlement],
+									   'build_city':[self.get_possible_actions_build_city,self.place_city],
+									   'trade_4vs1':[self.get_possible_actions_trade_bank,self.trade_bank],
+									   'trade_3vs1':[self.get_possible_actions_trade_3vs1,self.trade_3vs1],
+									   'trade_2vs1':[self.get_possible_actions_trade_2vs1,self.trade_2vs1]}
+
+		self.create_possible_actions_dictionary()
+		self.create_possible_trade_sets_3vs1()
 
 	def next_players_turn(self):
-		self.current_player =  self.current_player + 1 if self.current_player < 4 else 1
+		self.current_player = self.current_player + 1 if self.current_player < 4 else 1
 
 	# returns nextState,reward and whether the game is finished
 	# General function which should be implemented at the end.
@@ -44,21 +55,53 @@ class Game:
 		self.next_players_turn()
 		pass
 
-	# OLD FUNCTION, CAN DEFINITELY BE REMOVED
+
 	def get_possible_actions(self,player_num):
-		possible_actions = self.get_possible_actions_build_road(player_num)*1
-		possible_actions = np.concatenate((possible_actions,self.get_possible_actions_build_settlement(player_num)*1))
-		possible_actions = np.concatenate((possible_actions,self.get_possible_actions_build_city(player_num)*1))
+		"""
+        Concatenates and return all possible actions of the given player.
+
+        Herefore the function references given in self.action_array_names_dic are used. So it is a
+        bit generic method.
+        :param action_index:
+            Number of action.
+        :param player_num:
+        	Number of player
+        :returns:
+        	numpy array with possible actions (1's and 0's).
+        """
+		counter = 0
+		possible_actions = []
+		for action_set,function_ref in self.action_array_names_dic.items():
+			if counter == 0:
+				possible_actions = function_ref[0](player_num)*1
+				counter+=1
+			possible_actions = np.concatenate((possible_actions,function_ref[0](player_num)*1))
+
 		return possible_actions
 
 	def take_action(self,chosen_action_ind,player_num):
-		# This is ugly and just for testing purposes...
-		if chosen_action_ind < 72:
-			self.place_road(chosen_action_ind,player_num)
-		elif chosen_action_ind < (72+54):
-			self.place_settlement(chosen_action_ind-72,player_num)
-		else:
-			self.place_city(chosen_action_ind-72-54,player_num)
+		"""
+        Executes the action chosen by the RL algorithm
+
+        Herefore the function references given in self.action_array_names_dic are used. So it is a
+        bit generic method.
+        :param action_index:
+            Number of action.
+        :param player_num:
+        	Number of player
+        """
+		last_val = 0
+		for key,val in self.act_dic.items():
+			if chosen_action_ind < val:
+				next_action = key
+				action_id = chosen_action_ind-last_val
+				self.action_array_names_dic[next_action][1](action_id,player_num)
+				break
+			else:
+				last_val = val
+
+
+
 
 	def roll_dice(self):
 		"""
@@ -290,7 +333,7 @@ class Game:
             list(int) list of all crossing indexes where a city is allowed to be placed
                 by this player
         """
-		valid_crossings = self.crossings.get_building_state()==player_num
+		valid_crossings = (self.crossings.get_building_state()==player_num)
 		# Returns the remaining valid crossings
 		return valid_crossings
 
@@ -417,7 +460,13 @@ class Game:
 		"""
 
 		trade_bank_array = np.repeat(self.cards[player_num-1,:] >= 4,4)
-		return trade_bank_array
+
+		# vector with resource types received when trading according to trade_bank_array
+		self.traded_resources = np.array([1,2,3,4,0,2,3,4,0,1,3,4,0,1,2,4,0,1,2,3])
+		traded_resources_available = np.zeros(len(self.traded_resources))
+		for i in range(5):
+			traded_resources_available = np.logical_or(self.check_resource_available_on_pile(i)*(self.traded_resources==i),traded_resources_available)
+		return np.logical_and(trade_bank_array,traded_resources_available)
 
 	def get_possible_actions_trade_3vs1(self,player_num):
 		"""
@@ -433,13 +482,23 @@ class Game:
 		if not self.has_3vs1_port(player_num):
 			return np.array(possible_actions)
 
+		if sum(self.cards[player_num-1,:])<3:
+			return np.array(possible_actions)
+
+		# Contains resource indices of all resources the player has at least once
 		non_zero_card_indices = np.nonzero(self.cards[player_num-1,:])[0]
+
 		iter_cards = np.array([])
+		# Builds all possible sets of three cards given the cards the player has
 		for j in non_zero_card_indices:
 			iter_cards =np.concatenate((iter_cards,np.repeat(j,self.cards[player_num-1,j])))
 
 		card_sets = set(itertools.combinations(tuple(iter_cards),3))
 		for j in range(len(self.trade_3vs1_list)):
+			# Check if wanted resource is available on the pile at all..
+			if not self.check_resource_available_on_pile(j):
+				continue
+
 			temp_list = sorted(self.trade_3vs1_list[j])
 			for i in range(len(temp_list)):
 				if temp_list[i] in card_sets:
@@ -504,7 +563,14 @@ class Game:
 		"""
 		has_2vs1_port = self.has_2vs1_port(player_num)
 		port_and_cards_available = has_2vs1_port * (self.cards[player_num-1,:]>=2)
-		return np.repeat(port_and_cards_available,4)
+
+		# Check if resources are available on the pile
+		self.traded_resources = np.array([1,2,3,4,0,2,3,4,0,1,3,4,0,1,2,4,0,1,2,3])
+		traded_resources_available = np.zeros(len(self.traded_resources))
+		for i in range(5):
+			traded_resources_available = np.logical_or(self.check_resource_available_on_pile(i)*(self.traded_resources==i),traded_resources_available)
+
+		return np.logical_and(np.repeat(port_and_cards_available,4),traded_resources_available)
 
 	def discard_resources(self):
 		"""
@@ -520,6 +586,73 @@ class Game:
 				for j in range(num_discarded_cards):
 					player_cards[np.argmax(player_cards)]-=1
 			self.cards[i,:] = player_cards
+
+	def create_possible_actions_dictionary(self):
+		"""
+		According to initialization of the game, only certain action spaces will be added to this dictionary.
+		They will be added in the order of appearance in  self.action_array_names_dic.
+		Here the first index of the next action space is stored with each named action space.
+
+		Example:
+			{'build_road':72,
+			 'build_settlement':126
+			 ...}
+		"""
+		act_dic = {}
+		last_length = 0
+		for action_set,function_ref in self.action_array_names_dic.items():
+			act_dic[action_set] = len(function_ref[0](1)) + last_length
+			last_length = act_dic[action_set]
+
+		self.act_dic = act_dic
+
+	def trade_bank(self,action_index,player_num):
+		"""
+        Executes the action trade with bank for a certain player and a certain action index (corresponding to
+        the get_possible_actions_trade_bank function)
+
+        :param action_index:
+            Number of action.
+        :param player_num:
+        	Player Number.
+        """
+		player_num-=1
+		traded_resource = int(action_index/4)
+		self.cards[player_num,traded_resource]-=4
+		self.cards[player_num,self.traded_resources[action_index]]+=+1
+
+	def trade_3vs1(self,action_index,player_num):
+		"""
+        Executes the action trade 3vs1 for a certain player and a certain action index (corresponding to
+        the get_possible_actions_trade_3vs1 function)
+
+        :param action_index:
+            Number of action.
+        :param player_num:
+        	Player Number.
+        """
+		player_num-=1
+		traded_resource = int(action_index/20) # the resource you the player will obtain
+		self.cards[player_num,traded_resource]+=1
+		given_tuple = sorted(self.trade_3vs1_list[traded_resource])[action_index%20]
+		for resource in given_tuple:
+			self.cards[player_num,resource]-=1
+
+
+	def trade_2vs1(self,action_index,player_num):
+		"""
+        Executes the action trade 2vs1 for a certain player and a certain action index (corresponding to
+        the get_possible_actions_trade_2vs1 function)
+
+        :param action_index:
+            Number of action.
+        :param player_num:
+        	Player Number.
+        """
+		player_num-=1
+		traded_resource = int(action_index/4)
+		self.cards[player_num,traded_resource]-=2
+		self.cards[player_num,self.traded_resources[action_index]]+=+1
 
 
 

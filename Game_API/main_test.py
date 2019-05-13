@@ -2,6 +2,108 @@ from Game import *
 import Defines
 import time
 
+def test_action_array():
+    g = Game(random_init=False)
+    g.create_possible_actions_dictionary()
+
+test_action_array()
+
+def test_2vs1_trade_until_no_more_ore():
+    g = Game(random_init=False)
+    g.place_settlement(0, 1) # has ore-port
+    g.cards[0,2] = 18 # has 18 ore
+    while True:
+        actions = g.get_possible_actions_trade_2vs1(1)
+
+        chosen_action = np.random.choice(len(actions), 1, p=actions/sum(actions))
+
+        g.trade_2vs1(chosen_action[0],1)
+        if g.cards[0,2]==0:
+            break
+    assert sum(g.cards[0,:])==9
+
+test_2vs1_trade_until_no_more_ore()
+
+def test_3vs1_trade_get_possibilities_and_trade():
+    g = Game(random_init=False)
+    g.place_settlement(6,1)
+    g.cards[0,:]=np.array([5,5,0,0,0])
+    g.cards[1,:]=np.array([0,0,19,3,0])
+    actions = g.get_possible_actions_trade_3vs1(1)
+
+    chosen_action = np.random.choice(len(actions), 1, p=actions/sum(actions))
+
+    g.trade_3vs1(chosen_action[0],1)
+
+    assert sum(g.cards[0,:])==8
+
+test_3vs1_trade_get_possibilities_and_trade()
+
+def test_3vs1_trade_until_two_cards_left():
+    g = Game(random_init=False)
+    g.place_settlement(6,1)
+    g.cards[0,:]=np.array([10,10,0,0,0])
+    g.cards[1,:]=np.array([0,0,19,3,0])
+    while True:
+        actions = g.get_possible_actions_trade_3vs1(1)
+
+        chosen_action = np.random.choice(len(actions), 1, p=actions/sum(actions))
+
+        g.trade_3vs1(chosen_action[0],1)
+        if sum(g.cards[0,:])==2:
+            break
+
+
+    assert sum(g.cards[0,:])==2
+
+test_3vs1_trade_until_two_cards_left()
+
+def test_3vs1_trade_until_two_cards_left_grain_vs_wood():
+    g = Game(random_init=False)
+    g.place_settlement(6,1)
+    g.cards[0,:]=np.array([10,0,0,0,0])
+    g.cards[1,:]=np.array([0,19,19,19,0])
+
+    while True:
+        actions = g.get_possible_actions_trade_3vs1(1)
+        chosen_action = np.random.choice(len(actions), 1, p=actions/sum(actions))
+        g.trade_3vs1(chosen_action[0],1)
+        if sum(g.cards[0,:])==2:
+            break
+    np.testing.assert_array_equal(g.cards[0,:],np.array([2,0,0,0,0]))
+
+test_3vs1_trade_until_two_cards_left_grain_vs_wood()
+
+
+def test_trade_bank_get_possibilities_and_do_trade():
+    g = Game(random_init=False)
+    g.cards[0,:]=np.array([5,5,0,0,0])
+    g.cards[1,:]=np.array([0,0,19,3,0])
+    actions = g.get_possible_actions_trade_bank(1)
+
+    chosen_action = np.random.choice(len(actions), 1, p=actions/sum(actions))
+
+    g.trade_bank(chosen_action[0],1)
+
+    assert sum(g.cards[0,:])==7
+
+test_trade_bank_get_possibilities_and_do_trade()
+
+def test_trade_bank_one_resource_not_available():
+    g = Game(random_init=False)
+    g.cards[0,:]=np.array([5,5,0,0,0])
+    g.cards[1,:]=np.array([0,0,19,3,0])
+    assert sum(g.get_possible_actions_trade_bank(1))==6
+
+test_trade_bank_one_resource_not_available()
+
+def test_trade_bank_all_available():
+    g = Game(random_init=False)
+    g.cards[0,:]=np.array([5,5,0,0,0])
+    assert sum(g.get_possible_actions_trade_bank(1))==8
+
+test_trade_bank_all_available()
+
 def test_discard_robbed_cards_no_cards():
     g = Game(random_init=False)
     g.place_settlement(10, 1)
@@ -57,6 +159,16 @@ def test_2vs_1_trade_resources_and_1port():
     assert sum(g.get_possible_actions_trade_2vs1(1))==4 # possible trade against 4 resources
 
 test_2vs_1_trade_resources_and_1port()
+
+def test_2vs_1_trade_resources_and_1port_no_resource_on_pile():
+    g = Game(random_init=False)
+    g.place_settlement(0, 1) # has ore-port
+    g.cards[0,2] = 3 # has 3 ore
+    g.cards[1,0] = 17 # all grain
+    g.cards[2,0] = 2  # is taken...
+    assert sum(g.get_possible_actions_trade_2vs1(1))==3 # possible trade against 4 resources
+
+test_2vs_1_trade_resources_and_1port_no_resource_on_pile()
 
 def test_2vs_1_trade_resources_and_3port():
     g = Game(random_init=False)
@@ -246,7 +358,7 @@ def test_develop_one_player():
     g.place_road(14,1)
 
     # Iterate some turns for player and letting it sample randomly from all possible actions
-    for i in range(10):
+    for i in range(100):
         g.roll_dice() # automatically distributes resources
         print(g.get_possible_actions_build_road(1)*1)
         actions = g.get_possible_actions(1)
