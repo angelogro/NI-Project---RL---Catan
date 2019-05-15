@@ -101,7 +101,8 @@ class HexTiles:
 
     def get_desert_hex(self):
         tiles_order = self.get_tiles()
-        return tiles_order[tiles_order == Defines.HEX_DESERT]
+        resource,number=zip(*tiles_order)
+        return resource.index(Defines.HEX_DESERT)
 
 
 

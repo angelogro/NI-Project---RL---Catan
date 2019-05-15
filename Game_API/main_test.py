@@ -22,7 +22,7 @@ def test_2vs1_trade_until_no_more_ore():
             break
     assert sum(g.cards[0,:])==9
 
-test_2vs1_trade_until_no_more_ore()
+#test_2vs1_trade_until_no_more_ore()
 
 def test_3vs1_trade_get_possibilities_and_trade():
     g = Game(random_init=False)
@@ -37,7 +37,7 @@ def test_3vs1_trade_get_possibilities_and_trade():
 
     assert sum(g.cards[0,:])==8
 
-test_3vs1_trade_get_possibilities_and_trade()
+#test_3vs1_trade_get_possibilities_and_trade()
 
 def test_3vs1_trade_until_two_cards_left():
     g = Game(random_init=False)
@@ -72,7 +72,7 @@ def test_3vs1_trade_until_two_cards_left_grain_vs_wood():
             break
     np.testing.assert_array_equal(g.cards[0,:],np.array([2,0,0,0,0]))
 
-test_3vs1_trade_until_two_cards_left_grain_vs_wood()
+#test_3vs1_trade_until_two_cards_left_grain_vs_wood()
 
 
 def test_trade_bank_get_possibilities_and_do_trade():
@@ -87,7 +87,7 @@ def test_trade_bank_get_possibilities_and_do_trade():
 
     assert sum(g.cards[0,:])==7
 
-test_trade_bank_get_possibilities_and_do_trade()
+#test_trade_bank_get_possibilities_and_do_trade()
 
 def test_trade_bank_one_resource_not_available():
     g = Game(random_init=False)
@@ -95,14 +95,14 @@ def test_trade_bank_one_resource_not_available():
     g.cards[1,:]=np.array([0,0,19,3,0])
     assert sum(g.get_possible_actions_trade_bank(1))==6
 
-test_trade_bank_one_resource_not_available()
+#test_trade_bank_one_resource_not_available()
 
 def test_trade_bank_all_available():
     g = Game(random_init=False)
     g.cards[0,:]=np.array([5,5,0,0,0])
     assert sum(g.get_possible_actions_trade_bank(1))==8
 
-test_trade_bank_all_available()
+#test_trade_bank_all_available()
 
 def test_discard_robbed_cards_no_cards():
     g = Game(random_init=False)
@@ -110,7 +110,7 @@ def test_discard_robbed_cards_no_cards():
     g.discard_resources()
     assert sum(g.cards[0,:])==0
 
-test_discard_robbed_cards_no_cards()
+#test_discard_robbed_cards_no_cards()
 
 def test_discard_robbed_cards_few_cards():
     g = Game(random_init=False)
@@ -119,7 +119,7 @@ def test_discard_robbed_cards_few_cards():
     g.discard_resources()
     assert sum(g.cards[0,:])==6
 
-test_discard_robbed_cards_few_cards()
+#test_discard_robbed_cards_few_cards()
 
 def test_discard_robbed_cards_enough_cards():
     g = Game(random_init=False)
@@ -128,14 +128,14 @@ def test_discard_robbed_cards_enough_cards():
     g.discard_resources()
     assert sum(g.cards[0,:])==13
 
-test_discard_robbed_cards_enough_cards()
+#test_discard_robbed_cards_enough_cards()
 
 def test_2vs_1_trade_noresources():
     g = Game(random_init=False)
     g.place_settlement(10, 1)
     assert sum(g.get_possible_actions_trade_2vs1(1))==0
 
-test_2vs_1_trade_noresources()
+#test_2vs_1_trade_noresources()
 
 def test_2vs_1_trade_resources_no_port():
     g = Game(random_init=False)
@@ -143,14 +143,14 @@ def test_2vs_1_trade_resources_no_port():
     g.cards[0,:] = [5,5,5,5,5]
     assert sum(g.get_possible_actions_trade_2vs1(1))==0
 
-test_2vs_1_trade_resources_no_port()
+#test_2vs_1_trade_resources_no_port()
 
 def test_2vs_1_trade_noresources_but_port():
     g = Game(random_init=False)
     g.place_settlement(0, 1)
     assert sum(g.get_possible_actions_trade_2vs1(1))==0
 
-test_2vs_1_trade_noresources_but_port()
+#test_2vs_1_trade_noresources_but_port()
 
 def test_2vs_1_trade_resources_and_1port():
     g = Game(random_init=False)
@@ -158,7 +158,7 @@ def test_2vs_1_trade_resources_and_1port():
     g.cards[0,2] = 3 # has 3 ore
     assert sum(g.get_possible_actions_trade_2vs1(1))==4 # possible trade against 4 resources
 
-test_2vs_1_trade_resources_and_1port()
+#test_2vs_1_trade_resources_and_1port()
 
 def test_2vs_1_trade_resources_and_1port_no_resource_on_pile():
     g = Game(random_init=False)
@@ -168,7 +168,7 @@ def test_2vs_1_trade_resources_and_1port_no_resource_on_pile():
     g.cards[2,0] = 2  # is taken...
     assert sum(g.get_possible_actions_trade_2vs1(1))==3 # possible trade against 4 resources
 
-test_2vs_1_trade_resources_and_1port_no_resource_on_pile()
+#test_2vs_1_trade_resources_and_1port_no_resource_on_pile()
 
 def test_2vs_1_trade_resources_and_3port():
     g = Game(random_init=False)
@@ -180,7 +180,8 @@ def test_2vs_1_trade_resources_and_3port():
     g.cards[0,0] = 4 # has 2 grain
     assert sum(g.get_possible_actions_trade_2vs1(1))==12 # possible trade against 4 resources
 
-test_2vs_1_trade_resources_and_3port()
+#test_2vs_1_trade_resources_and_3port()
+
 
 def test_3vs_1_trade_all_resources_available():
     g = Game(random_init=False)
@@ -207,7 +208,7 @@ def test_3vs_1_trade_all_resources_available():
     assert sum(possible_actions) == 0
 
 
-test_3vs_1_trade_all_resources_available()
+#test_3vs_1_trade_all_resources_available()
 
 def test_3vs_1_trade_some_resources():
     g = Game(random_init=False)
@@ -226,7 +227,7 @@ def test_3vs_1_trade_some_resources():
     g.cards[0,2]=0 # 1 ore
     possible_actions = g.get_possible_actions_trade_3vs1(1)
     assert sum(possible_actions) == 0
-test_3vs_1_trade_some_resources()
+#test_3vs_1_trade_some_resources()
 
 def test_rob():
     g = Game(random_init=False)
@@ -243,7 +244,8 @@ def test_rob():
     print("Robable players ", g.get_possible_actions_rob_player(1))
     print("Robable players ", g.rob_person(1))
 
-test_rob()
+#test_rob()
+
 
 
 
@@ -408,3 +410,50 @@ def test_develop_two_player():
 
 #test_develop_two_player()
 
+def test_develop_four_player():
+    # Using the initial fixed setup
+    g = Game(random_init=False)
+
+    # Putting settlement and roads to places so that all resources are accessible
+    g.place_settlement(42,1,True)
+    g.place_settlement(35,1,True)
+    g.place_road(36,1,True)
+    g.place_road(47,1,True)
+
+    g.place_settlement(40,2,True)
+    g.place_settlement(13,2,True)
+    g.place_road(18,2,True)
+    g.place_road(44,2,True)
+
+    g.place_settlement(20,3,True)
+    g.place_settlement(22,3,True)
+    g.place_road(31,3,True)
+    g.place_road(29,3,True)
+
+    g.place_settlement(8,4,True)
+    g.place_settlement(10,4,True)
+    g.place_road(12,4,True)
+    g.place_road(43,4,True)
+
+
+    # Iterate some turns for player and letting it sample randomly from all possible actions
+    for i in range(5000):
+        actions = g.get_possible_actions(g.current_player)
+        #print('ANzahl möglicher Aktionen: Iteration '+str(i)+'  ' +str(sum(actions)))
+        if sum(actions)>=1:
+            chosen_action = np.random.choice(len(actions), 1, p=actions/sum(actions))
+            g.take_action(chosen_action[0],g.current_player)
+
+        if(np.any(g.get_victory_points()>=8)):
+            break
+
+
+
+    # As player 2 is intially worsely placed than player 1 we expect him to have fewer buildings and resources
+    print("From test_develop_four_player() :" )
+    print(g.cards)
+    print(g.building_state)
+    print(g.roads.get_state())
+    print(g.get_victory_points())
+
+test_develop_four_player()

@@ -28,7 +28,9 @@ class Game:
 		self.current_player = 1
 
 		# Initializes the robber
-		self.robber = self.set_robber_position(self.tiles.get_desert_hex())
+		self.robber = self.tiles.get_desert_hex()
+		self.seven_rolled = 0
+		self.rob_player_state = 0
 
 		# List of possible action arrays
 		# Key: action space name, Value: [get_possible_actions_function, execute_corresponding_action_function]
@@ -37,23 +39,34 @@ class Game:
 									   'build_city':[self.get_possible_actions_build_city,self.place_city],
 									   'trade_4vs1':[self.get_possible_actions_trade_bank,self.trade_bank],
 									   'trade_3vs1':[self.get_possible_actions_trade_3vs1,self.trade_3vs1],
-									   'trade_2vs1':[self.get_possible_actions_trade_2vs1,self.trade_2vs1]}
+									   'trade_2vs1':[self.get_possible_actions_trade_2vs1,self.trade_2vs1],
+									   'move_robber':[self.get_possible_action_move_robber,self.move_robber],
+									   'rob_player':[self.get_possible_actions_rob_player,self.rob_player],
+									   'do_nothing':[self.get_possible_action_do_nothing,self.next_players_turn]}
 
 		self.create_possible_actions_dictionary()
 		self.create_possible_trade_sets_3vs1()
 
-	def next_players_turn(self):
+	def next_players_turn(self,action_ind,player_num):
 		self.current_player = self.current_player + 1 if self.current_player < 4 else 1
+		self.roll_dice()
 
-	# returns nextState,reward and whether the game is finished
+	def get_possible_action_do_nothing(self,player_num):
+		if self.seven_rolled or self.rob_player_state:
+			return np.array([0])
+		else:
+			return np.array([1])
+
+
+
+# returns nextState,reward and whether the game is finished
 	# General function which should be implemented at the end.
-	def step(self,action):
-
+	def step(self,action,player_num):
+		self.get_possible_actions(self.current_player)
 		# Make state transition
-		self.perform_action(action)
-		# If action is 'Do Nothing'
-		self.next_players_turn()
-		pass
+		self.take_action(action,self.current_player)
+
+		#return self.get_game_state(),self.get_current_reward(),self.get_possible_actions(player_num)
 
 
 	def get_possible_actions(self,player_num):
@@ -62,8 +75,7 @@ class Game:
 
         Herefore the function references given in self.action_array_names_dic are used. So it is a
         bit generic method.
-        :param action_index:
-            Number of action.
+
         :param player_num:
         	Number of player
         :returns:
@@ -75,8 +87,8 @@ class Game:
 			if counter == 0:
 				possible_actions = function_ref[0](player_num)*1
 				counter+=1
-			possible_actions = np.concatenate((possible_actions,function_ref[0](player_num)*1))
-
+			else:
+				possible_actions = np.concatenate((possible_actions,function_ref[0](player_num)*1))
 		return possible_actions
 
 	def take_action(self,chosen_action_ind,player_num):
@@ -93,9 +105,11 @@ class Game:
 		last_val = 0
 		for key,val in self.act_dic.items():
 			if chosen_action_ind < val:
-				next_action = key
-				action_id = chosen_action_ind-last_val
-				self.action_array_names_dic[next_action][1](action_id,player_num)
+				chosen_action_array_label = key # eg 'build_city'
+				action_ind = chosen_action_ind-last_val
+				# Thi calls the action_function with label chosen_action_array_label
+				self.action_array_names_dic[chosen_action_array_label][1](action_ind,player_num)
+				#print('Player : '+str(self.current_player)+' , Action : '+chosen_action_array_label)
 				break
 			else:
 				last_val = val
@@ -115,12 +129,19 @@ class Game:
 			self.discard_resources()
 
 			# Actually here we have to make sure that the next action taken by the player will be move_robber()
-			self.move_robber()
+			self.seven_rolled = 1
 		else:
 			self.distribute_resources(number)
 
-	def move_robber(self):
+	def move_robber(self,action,player_num):
+		self.seven_rolled = 0
+		self.set_robber_position(action)
+		self.rob_player_state = 1
+		if sum(self.get_possible_actions_rob_player(player_num))==0:
+			self.rob_player_state = 0
 		pass
+
+
 
 	def distribute_resources(self,number):
 		"""
@@ -142,6 +163,7 @@ class Game:
 			for tile in crossings[i][1]:
 				# If the rolled number is a number chip on one of those crossings
 				if tile[1]==number:
+
 					self.add_resource(tile[0],(buildings[i]%4)-1)
 					# If it is a town, add one more resource
 					if buildings[i] > 4:
@@ -183,20 +205,29 @@ class Game:
 		return True
 
 	# Placeholder
-	def place_settlement(self,crossing_index,player_num):
-		self.pay(player_num,buying_good='Settlement')
+	def place_settlement(self,crossing_index,player_num,init=False):
+		if init==False:
+			self.pay(player_num,buying_good='Settlement')
 		self.crossings.place_settlement(crossing_index,player_num)
 		pass
 
 	#Placeholder
-	def place_road(self,road_index,player_num):
-		self.pay(player_num,buying_good='Road')
+	def place_road(self,road_index,player_num,init=False):
+		if init==False:
+			self.pay(player_num,buying_good='Road')
 		self.roads.place_road(road_index,player_num)
 		pass
 
 	def place_city(self,crossing_index,player_num):
 		self.pay(player_num,buying_good='City')
 		self.crossings.place_city(crossing_index,player_num)
+		pass
+
+	def rob_player(self,player_index,player_num):
+		rob_resource_index=np.random.choice(np.arange(5),1,p=self.cards[player_index,:]/sum(self.cards[player_index,:]))[0]
+		self.cards[player_index,rob_resource_index]-=1
+		self.cards[player_num-1,rob_resource_index]+=1
+		self.rob_player_state = 0
 		pass
 
 	def get_possible_actions_build_settlement(self,player_num,init_state=False):
@@ -210,8 +241,12 @@ class Game:
             list(int) list of all crossing indexes where a settlement is allowed to be placed
                 by this player
         """
-		valid_crossings = np.zeros(Defines.NUM_CROSSINGS)
 
+		valid_crossings = np.zeros(Defines.NUM_CROSSINGS)
+		if self.check_resources_available(player_num,'Settlement') == False:
+			return valid_crossings
+		if self.seven_rolled or self.rob_player_state:
+			return valid_crossings
 		# On Initialization
 		if init_state:
 			return self.crossings.get_building_state()==0
@@ -250,6 +285,11 @@ class Game:
 		:param player_num:
 			Number of the player.
 		"""
+		if self.check_resources_available(player_num,'Road') == False:
+			return np.zeros(Defines.NUM_EDGES)
+		if self.seven_rolled or self.rob_player_state:
+			return np.zeros(Defines.NUM_EDGES)
+
 		# On initialization
 		if init_state == True:
 			# Find the settlement without a road close to it
@@ -314,13 +354,13 @@ class Game:
 			One of the following: 'Road', 'Settlement', 'City', 'Development Card'
         """
 		if buying_good=='Road':
-			self.cards[player_num-1,:]-np.array([0,0,0,1,1])
+			self.cards[player_num-1,:]-=np.array([0,0,0,1,1])
 		if buying_good=='Settlement':
-			self.cards[player_num-1,:]-np.array([1,1,0,1,1])
+			self.cards[player_num-1,:]-=np.array([1,1,0,1,1])
 		if buying_good=='City':
-			self.cards[player_num-1,:]-np.array([2,0,3,0,0])
+			self.cards[player_num-1,:]-=np.array([2,0,3,0,0])
 		if buying_good=='Development Card':
-			self.cards[player_num-1,:]-np.array([1,1,1,0,0])
+			self.cards[player_num-1,:]-=np.array([1,1,1,0,0])
 
 	def get_possible_actions_build_city(self,player_num):
 		"""
@@ -333,7 +373,13 @@ class Game:
             list(int) list of all crossing indexes where a city is allowed to be placed
                 by this player
         """
+		if self.seven_rolled or self.rob_player_state:
+			return np.zeros(Defines.NUM_CROSSINGS)
+		if self.check_resources_available(player_num,'City') == False:
+			return np.zeros(Defines.NUM_CROSSINGS)
 		valid_crossings = (self.crossings.get_building_state()==player_num)
+
+
 		# Returns the remaining valid crossings
 		return valid_crossings
 
@@ -346,7 +392,7 @@ class Game:
         """
 		self.robber = tile_number
 
-	def get_possible_action_move_robber(self):
+	def get_possible_action_move_robber(self,player_num):
 		"""
         Returns all locations where the robber can be placed.
 
@@ -354,9 +400,13 @@ class Game:
             np.array(binary), length 19, with a 1 representing a tile, the robber can be moved to and
             	a 0 where it can't.
         """
+		if self.seven_rolled == 0:
+			return np.zeros(Defines.NUM_TILES)
+
 		robber_actions = np.ones(Defines.NUM_TILES)
 		# Robber has to move away from current position
 		robber_actions[self.robber] = 0
+
 		return robber_actions
 
 	def get_robber_state(self):
@@ -418,14 +468,15 @@ class Game:
 		:return rob_players:
 			np.array(binary), length 4, with 1 representing person which is robable, 0 not rob
 		"""
+		if self.rob_player_state == 0:
+			return np.zeros(4)
+
 		robber_crossings = self.crossings.get_crossings_per_tile()[self.robber,:]
 		cross_state = self.crossings.building_state[robber_crossings]
 		possible_players = []
 		for crossing in cross_state:
 			if crossing != 0 and crossing != 9:
-				print("Crossing type ", crossing)
 				possible_players.append(crossing)
-		print("Possible players ", possible_players)
 		rob_players = [0,0,0,0]
 		for player in possible_players:
 			if player == 1 or player == 5:
@@ -461,6 +512,9 @@ class Game:
 
 		trade_bank_array = np.repeat(self.cards[player_num-1,:] >= 4,4)
 
+		if self.seven_rolled or self.rob_player_state:
+			return np.zeros(len(trade_bank_array))
+
 		# vector with resource types received when trading according to trade_bank_array
 		self.traded_resources = np.array([1,2,3,4,0,2,3,4,0,1,3,4,0,1,2,4,0,1,2,3])
 		traded_resources_available = np.zeros(len(self.traded_resources))
@@ -478,6 +532,9 @@ class Game:
 			with a 1 where the set of three cards is on the players hand.
 		"""
 		possible_actions = [0]*100
+
+		if self.seven_rolled or self.rob_player_state:
+			return np.array(possible_actions)
 
 		if not self.has_3vs1_port(player_num):
 			return np.array(possible_actions)
@@ -561,6 +618,10 @@ class Game:
 			Wool Ore Brick Wood		Grain Ore Brick Wood	Grain Wool Brick Wood
 			[1 1 1 1                0 0 0 0 				1 1 1 1 ...]
 		"""
+
+		if self.seven_rolled or self.rob_player_state:
+			return np.zeros(20)
+
 		has_2vs1_port = self.has_2vs1_port(player_num)
 		port_and_cards_available = has_2vs1_port * (self.cards[player_num-1,:]>=2)
 
@@ -654,7 +715,13 @@ class Game:
 		self.cards[player_num,traded_resource]-=2
 		self.cards[player_num,self.traded_resources[action_index]]+=+1
 
-
+	def get_victory_points(self):
+		vp = []
+		buildingstate = self.crossings.get_building_state()
+		for i in range(4):
+			player_num=i+1
+			vp.append(sum(buildingstate==player_num)+2*sum(buildingstate==(player_num+4)))
+		return np.array(vp)
 
 
 
