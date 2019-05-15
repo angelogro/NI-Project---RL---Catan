@@ -56,7 +56,7 @@ def test_3vs1_trade_until_two_cards_left():
 
     assert sum(g.cards[0,:])==2
 
-test_3vs1_trade_until_two_cards_left()
+#test_3vs1_trade_until_two_cards_left()
 
 def test_3vs1_trade_until_two_cards_left_grain_vs_wood():
     g = Game(random_init=False)
@@ -413,7 +413,7 @@ def test_develop_two_player():
 def test_develop_four_player():
     # Using the initial fixed setup
     g = Game(random_init=False)
-
+    g.action_counter = 17
     # Putting settlement and roads to places so that all resources are accessible
     g.place_settlement(42,1,True)
     g.place_settlement(35,1,True)
@@ -456,4 +456,37 @@ def test_develop_four_player():
     print(g.roads.get_state())
     print(g.get_victory_points())
 
-test_develop_four_player()
+#test_develop_four_player()
+
+def test_develop_four_player_w_init():
+    # Using the initial fixed setup
+    g = Game(random_init=True)
+
+    # Iterate some turns for player and letting it sample randomly from all possible actions
+    for i in range(1000):
+        actions = g.get_possible_actions(g.current_player)
+
+        print('Anzahl möglicher Aktionen: Iteration '+str(i)+'  ' +str(sum(actions)))
+        if sum(actions)>=1:
+            chosen_action = np.random.choice(len(actions), 1, p=actions/sum(actions))
+
+            g.take_action(chosen_action[0],g.current_player)
+        if(np.any(g.get_victory_points()>=8)):
+            break
+
+
+
+
+    print("From test_develop_four_player() :" )
+    print('Cards: '+str(g.cards))
+    print('Victory Points: '+str(g.get_victory_points()))
+    print('Player 1 Settlements:' + str(np.where(g.building_state==1)))
+    print('PLayer 1 Streets' +str(np.where(g.roads.get_state()==1)))
+    print('Player 2 Settlements:' + str(np.where(g.building_state==2)))
+    print('PLayer 2 Streets' +str(np.where(g.roads.get_state()==2)))
+    print('Player 3 Settlements:' + str(np.where(g.building_state==3)))
+    print('PLayer 3 Streets' +str(np.where(g.roads.get_state()==3)))
+    print('Player 4 Settlements:' + str(np.where(g.building_state==4)))
+    print('PLayer 4 Streets' +str(np.where(g.roads.get_state()==4)))
+
+test_develop_four_player_w_init()

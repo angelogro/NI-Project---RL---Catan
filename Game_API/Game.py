@@ -32,6 +32,9 @@ class Game:
 		self.seven_rolled = 0
 		self.rob_player_state = 0
 
+		# Action Counter
+		self.action_counter = 20
+
 		# List of possible action arrays
 		# Key: action space name, Value: [get_possible_actions_function, execute_corresponding_action_function]
 		self.action_array_names_dic = {'build_road':[self.get_possible_actions_build_road,self.place_road],
@@ -44,15 +47,38 @@ class Game:
 									   'rob_player':[self.get_possible_actions_rob_player,self.rob_player],
 									   'do_nothing':[self.get_possible_action_do_nothing,self.next_players_turn]}
 
+		self.state_array_dic = {''}
+
 		self.create_possible_actions_dictionary()
 		self.create_possible_trade_sets_3vs1()
 
+		# Action Counter starts at 0. This will make sure that the 4 players will go through the intialization phase
+		# as all actions apart of build_settlement and build_road are disabled.
+		self.action_counter = 0
+
+
 	def next_players_turn(self,action_ind,player_num):
+		"""
+        Counts the player number up by one and rolls the dices
+
+        :param player_num:
+        	not used
+        :param action_ind:
+        	not used
+        """
 		self.current_player = self.current_player + 1 if self.current_player < 4 else 1
 		self.roll_dice()
 
 	def get_possible_action_do_nothing(self,player_num):
-		if self.seven_rolled or self.rob_player_state:
+		"""
+        Return the action array do_nothing
+
+        A one if skipping the turn is allowed and a zero otherwise (e.g. when you HAVE to move the robber)
+
+        :returns:
+        	numpy array with possible actions, length 1 (1's and 0's).
+        """
+		if self.seven_rolled or self.rob_player_state or self.action_counter < 16:
 			return np.array([0])
 		else:
 			return np.array([1])
@@ -65,6 +91,7 @@ class Game:
 		self.get_possible_actions(self.current_player)
 		# Make state transition
 		self.take_action(action,self.current_player)
+
 
 		#return self.get_game_state(),self.get_current_reward(),self.get_possible_actions(player_num)
 
@@ -102,17 +129,36 @@ class Game:
         :param player_num:
         	Number of player
         """
+
 		last_val = 0
 		for key,val in self.act_dic.items():
 			if chosen_action_ind < val:
 				chosen_action_array_label = key # eg 'build_city'
 				action_ind = chosen_action_ind-last_val
+				current_player = self.current_player
 				# Thi calls the action_function with label chosen_action_array_label
 				self.action_array_names_dic[chosen_action_array_label][1](action_ind,player_num)
-				#print('Player : '+str(self.current_player)+' , Action : '+chosen_action_array_label)
+				print('Player : '+str(current_player)+' , Action : '+chosen_action_array_label)
 				break
 			else:
 				last_val = val
+		self.count_up_action_counter()
+
+	def count_up_action_counter(self):
+		"""
+        Needed for the initial state when placing free settlements and roads.
+
+        Maintains the correct players order and counts up the action_counter so
+        that the game can continue as a normal game after initialization.
+        """
+		if self.action_counter%2==1 and self.action_counter <16:
+			if self.action_counter < 7:
+				self.current_player += 1
+			elif self.action_counter == 7:
+				pass
+			elif self.action_counter < 15:
+				self.current_player -= 1
+		self.action_counter += 1
 
 
 
@@ -133,13 +179,21 @@ class Game:
 		else:
 			self.distribute_resources(number)
 
-	def move_robber(self,action,player_num):
+	def move_robber(self,action_ind,player_num):
+		"""
+        Moves the robber to the tile with number action_ind
+
+        :param player_num:
+        	Number of player
+        :param action_ind:
+        	Number of player
+        """
 		self.seven_rolled = 0
-		self.set_robber_position(action)
+		self.set_robber_position(action_ind)
 		self.rob_player_state = 1
 		if sum(self.get_possible_actions_rob_player(player_num))==0:
 			self.rob_player_state = 0
-		pass
+
 
 
 
@@ -204,16 +258,14 @@ class Game:
 			return False
 		return True
 
-	# Placeholder
-	def place_settlement(self,crossing_index,player_num,init=False):
-		if init==False:
+	def place_settlement(self,crossing_index,player_num):
+		if self.action_counter >= 16:
 			self.pay(player_num,buying_good='Settlement')
 		self.crossings.place_settlement(crossing_index,player_num)
 		pass
 
-	#Placeholder
-	def place_road(self,road_index,player_num,init=False):
-		if init==False:
+	def place_road(self,road_index,player_num):
+		if self.action_counter >= 16:
 			self.pay(player_num,buying_good='Road')
 		self.roads.place_road(road_index,player_num)
 		pass
@@ -223,14 +275,23 @@ class Game:
 		self.crossings.place_city(crossing_index,player_num)
 		pass
 
-	def rob_player(self,player_index,player_num):
-		rob_resource_index=np.random.choice(np.arange(5),1,p=self.cards[player_index,:]/sum(self.cards[player_index,:]))[0]
-		self.cards[player_index,rob_resource_index]-=1
+	def rob_player(self,robbed_player_index,player_num):
+		"""
+        Takes a random card from player robbed_player_index and passes it to player player_num.
+
+		:param robbed_player_index:
+            Player to be robbed.
+
+        :param player_num:
+            Number of the player.
+        """
+		rob_resource_index=np.random.choice(np.arange(5),1,p=self.cards[robbed_player_index,:]/sum(self.cards[robbed_player_index,:]))[0]
+		self.cards[robbed_player_index,rob_resource_index]-=1
 		self.cards[player_num-1,rob_resource_index]+=1
 		self.rob_player_state = 0
 		pass
 
-	def get_possible_actions_build_settlement(self,player_num,init_state=False):
+	def get_possible_actions_build_settlement(self,player_num):
 		"""
         Returns all locations where settlement can be placed by the given player.
 
@@ -242,14 +303,17 @@ class Game:
                 by this player
         """
 
+		# On Initialization
+		if self.action_counter < 16 and self.action_counter%2==0:
+
+			return self.crossings.get_building_state()==0
+
+
 		valid_crossings = np.zeros(Defines.NUM_CROSSINGS)
 		if self.check_resources_available(player_num,'Settlement') == False:
 			return valid_crossings
 		if self.seven_rolled or self.rob_player_state:
 			return valid_crossings
-		# On Initialization
-		if init_state:
-			return self.crossings.get_building_state()==0
 
 		# Find all crossings a road of this player is connected to
 		crossings_connected_to_roads = np.unique(self.roads.get_roads()[self.roads.get_state()==player_num])
@@ -277,7 +341,7 @@ class Game:
 		# Returns the remaining valid crossings
 		return valid_crossings
 
-	def get_possible_actions_build_road(self,player_num,init_state = False):
+	def get_possible_actions_build_road(self,player_num):
 		"""
 		Returns a vector of zeros of length of amount of roads.
 		with ones on indices where roads can be placed by the given player.
@@ -285,13 +349,9 @@ class Game:
 		:param player_num:
 			Number of the player.
 		"""
-		if self.check_resources_available(player_num,'Road') == False:
-			return np.zeros(Defines.NUM_EDGES)
-		if self.seven_rolled or self.rob_player_state:
-			return np.zeros(Defines.NUM_EDGES)
-
 		# On initialization
-		if init_state == True:
+		if self.action_counter < 16 and self.action_counter%2==1:
+
 			# Find the settlement without a road close to it
 			# Find indices of crossings with buildings
 			ind_with_buildings = np.ravel(np.argwhere(self.crossings.get_building_state()==player_num))
@@ -299,13 +359,22 @@ class Game:
 			# Loop through all settlement of this player
 			for crossing_index in ind_with_buildings:
 				connected_roads = self.roads.get_state()
-
 				# If no road connected to the settlement yet...
+
 				if np.sum(connected_roads[self.crossings.connected_roads[crossing_index]])==0:
 					final_arr = np.zeros(Defines.NUM_EDGES)
 					final_arr[self.crossings.connected_roads[crossing_index]]=1
+
 					return final_arr
+
+
 			return
+
+		if self.check_resources_available(player_num,'Road') == False:
+			return np.zeros(Defines.NUM_EDGES)
+		if self.seven_rolled or self.rob_player_state:
+			return np.zeros(Defines.NUM_EDGES)
+
 
 		# During normal gameplay...
 
@@ -373,7 +442,7 @@ class Game:
             list(int) list of all crossing indexes where a city is allowed to be placed
                 by this player
         """
-		if self.seven_rolled or self.rob_player_state:
+		if self.seven_rolled or self.rob_player_state or self.action_counter < 16:
 			return np.zeros(Defines.NUM_CROSSINGS)
 		if self.check_resources_available(player_num,'City') == False:
 			return np.zeros(Defines.NUM_CROSSINGS)
@@ -400,7 +469,7 @@ class Game:
             np.array(binary), length 19, with a 1 representing a tile, the robber can be moved to and
             	a 0 where it can't.
         """
-		if self.seven_rolled == 0:
+		if self.seven_rolled == 0 or self.action_counter < 16:
 			return np.zeros(Defines.NUM_TILES)
 
 		robber_actions = np.ones(Defines.NUM_TILES)
@@ -468,7 +537,7 @@ class Game:
 		:return rob_players:
 			np.array(binary), length 4, with 1 representing person which is robable, 0 not rob
 		"""
-		if self.rob_player_state == 0:
+		if self.rob_player_state == 0 or self.action_counter < 16:
 			return np.zeros(4)
 
 		robber_crossings = self.crossings.get_crossings_per_tile()[self.robber,:]
@@ -512,7 +581,7 @@ class Game:
 
 		trade_bank_array = np.repeat(self.cards[player_num-1,:] >= 4,4)
 
-		if self.seven_rolled or self.rob_player_state:
+		if self.seven_rolled or self.rob_player_state or self.action_counter < 16:
 			return np.zeros(len(trade_bank_array))
 
 		# vector with resource types received when trading according to trade_bank_array
@@ -533,7 +602,7 @@ class Game:
 		"""
 		possible_actions = [0]*100
 
-		if self.seven_rolled or self.rob_player_state:
+		if self.seven_rolled or self.rob_player_state or self.action_counter < 16:
 			return np.array(possible_actions)
 
 		if not self.has_3vs1_port(player_num):
@@ -619,7 +688,7 @@ class Game:
 			[1 1 1 1                0 0 0 0 				1 1 1 1 ...]
 		"""
 
-		if self.seven_rolled or self.rob_player_state:
+		if self.seven_rolled or self.rob_player_state or self.action_counter < 16:
 			return np.zeros(20)
 
 		has_2vs1_port = self.has_2vs1_port(player_num)
@@ -716,6 +785,12 @@ class Game:
 		self.cards[player_num,self.traded_resources[action_index]]+=+1
 
 	def get_victory_points(self):
+		"""
+        Calculates the current victory points for each player
+
+        :return numpy array:
+        	Contains the current victory points of each player
+        """
 		vp = []
 		buildingstate = self.crossings.get_building_state()
 		for i in range(4):
