@@ -12,7 +12,8 @@ import Defines
 
 class Game:
 # no_player_trade, no_dev_cards, _no_3vs1_trade
-	def __init__(self,random_init=True,):
+	def __init__(self,random_init=True,needed_victory_points=8):
+		self.needed_victory_points = needed_victory_points
 		self.tiles = HexTiles(random_init)
 		self.crossings = Crossings(self.tiles.get_tiles(),self.tiles.harbours)
 		self.roads = Roads(self.crossings.get_neighbouring_crossings())
@@ -47,10 +48,19 @@ class Game:
 									   'rob_player':[self.get_possible_actions_rob_player,self.rob_player],
 									   'do_nothing':[self.get_possible_action_do_nothing,self.next_players_turn]}
 
-		self.state_array_dic = {''}
+		self.state_array_dic = {'tile_state':self.get_state_space_tiles, #number space included in tile_state as in Data Representation
+								#'number_state':self.get_state_space_numbers,
+								'port_state':self.get_state_space_ports,
+								'building_state':self.get_state_space_buildings,
+								'road_state':self.get_state_space_roads,
+								'robber_state':self.get_state_space_robber,
+								'cards_state':self.get_state_space_cards}
 
 		self.create_possible_actions_dictionary()
 		self.create_possible_trade_sets_3vs1()
+		self.create_number_space()
+		self.create_tile_space()
+		self.create_port_space()
 
 		# Action Counter starts at 0. This will make sure that the 4 players will go through the intialization phase
 		# as all actions apart of build_settlement and build_road are disabled.
@@ -88,12 +98,16 @@ class Game:
 # returns nextState,reward and whether the game is finished
 	# General function which should be implemented at the end.
 	def step(self,action,player_num):
-		self.get_possible_actions(self.current_player)
+
 		# Make state transition
 		self.take_action(action,self.current_player)
+		reward = 0
+		game_finished = 0
+		if self.get_victory_points()[self.current_player-1]>= self.needed_victory_points:
+			reward = 1
+			game_finished = 1
 
-
-		#return self.get_game_state(),self.get_current_reward(),self.get_possible_actions(player_num)
+		return self.get_state_space(),reward,self.get_possible_actions(player_num),game_finished
 
 
 	def get_possible_actions(self,player_num):
@@ -160,7 +174,17 @@ class Game:
 				self.current_player -= 1
 		self.action_counter += 1
 
-
+	def get_state_space(self):
+		counter = 0
+		state_array = []
+		for state_name,function_ref in self.state_array_dic.items():
+			print(state_name)
+			if counter == 0:
+				state_array = function_ref()
+				counter+=1
+			else:
+				state_array = np.concatenate((state_array,function_ref()))
+		return state_array
 
 
 	def roll_dice(self):
@@ -261,8 +285,17 @@ class Game:
 	def place_settlement(self,crossing_index,player_num):
 		if self.action_counter >= 16:
 			self.pay(player_num,buying_good='Settlement')
+		elif self.action_counter >= 7: # second settlement placed
+			self.distribute_resources_second_settlement(crossing_index,player_num)
 		self.crossings.place_settlement(crossing_index,player_num)
+
 		pass
+
+	def distribute_resources_second_settlement(self,crossing_index,player_num):
+		crossings = self.crossings.get_crossings()
+		for tile in crossings[crossing_index][1]:
+			if tile[1]!=7:
+				self.add_resource(tile[0],player_num-1)
 
 	def place_road(self,road_index,player_num):
 		if self.action_counter >= 16:
@@ -285,10 +318,18 @@ class Game:
         :param player_num:
             Number of the player.
         """
+
+		# As get_action_rob_player swaps current players position with the first player,
+		# it is reversed here
+		if robbed_player_index == player_num-1:
+			player_num = robbed_player_index + 1
+			robbed_player_index = 0
+
 		rob_resource_index=np.random.choice(np.arange(5),1,p=self.cards[robbed_player_index,:]/sum(self.cards[robbed_player_index,:]))[0]
 		self.cards[robbed_player_index,rob_resource_index]-=1
 		self.cards[player_num-1,rob_resource_index]+=1
 		self.rob_player_state = 0
+
 		pass
 
 	def get_possible_actions_build_settlement(self,player_num):
@@ -562,7 +603,9 @@ class Game:
 					rob_players[3] = 1
 
 		# self robbing not allowed
-		rob_players[player_num-1] = 0
+		# Putting the player who's turn is in the first position of the possible players to be robbed
+		rob_players[player_num-1] = rob_players[0]
+		rob_players[0] = 0
 
 		return np.array(rob_players)
 
@@ -798,8 +841,65 @@ class Game:
 			vp.append(sum(buildingstate==player_num)+2*sum(buildingstate==(player_num+4)))
 		return np.array(vp)
 
+	### State Space Getters
+	def get_state_space_tiles(self):
+		# Returns a flattened One-hot representation of the resources for each tile
+		return self.tile_space
 
+	def get_state_space_numbers(self):
+		return self.number_space
 
+	def create_number_space(self):
+		num_prob_dist = np.array([1,2,3,4,5,6,5,4,3,2,1])/36
+		resource,number=zip(*self.tiles.get_tiles())
+
+		self.number_space = num_prob_dist[np.array(number)-2]
+		self.number_space[np.argmax(self.number_space)]=0
+
+	def create_tile_space(self):
+		resources,number=zip(*self.tiles.get_tiles())
+		n_highest_value = np.max(resources) + 1
+		self.tile_space = np.ravel(np.eye(n_highest_value)[np.array(resources)].T*self.number_space)
+
+	def get_state_space_ports(self):
+		return self.harbour_space
+
+	def create_port_space(self):
+		harbour_state = self.tiles.get_harbour_state()
+		n_highest_value = np.max(harbour_state) # as they are numbered from 1-6
+		self.harbour_space = np.ravel(np.eye(n_highest_value)[np.array(harbour_state)-1])
+
+	def get_state_space_buildings(self):
+		building_state = self.crossings.get_building_state()
+		building_state[np.where(building_state==9)]=0
+		if not self.current_player == 1:
+			swap_1 = ((building_state==1)+(building_state==5))*(self.current_player-1)
+			swap_player = ((building_state==self.current_player)+(building_state==(self.current_player+4)))*(1-self.current_player)
+			building_state = building_state + swap_1 + swap_player
+		n_highest_value = 8
+		building_state-=1 # As zeros are not necessary in our state space representation
+		return np.ravel(np.eye(n_highest_value)[building_state])
+
+	def get_state_space_roads(self):
+		road_state = self.roads.get_state()
+		if not self.current_player == 1:
+			swap_1 = (road_state==1)*(self.current_player-1)
+			swap_player = (road_state==self.current_player)*(1-self.current_player)
+			road_state = road_state + swap_1 + swap_player
+		n_highest_value = 4 # 1,2,3,4
+		road_state-=1
+		return np.ravel(np.eye(n_highest_value)[road_state])
+
+	def get_state_space_robber(self):
+		robber_state = np.zeros(Defines.NUM_TILES)
+		robber_state[self.robber]=1
+		return robber_state
+
+	def get_state_space_cards(self):
+		card_state = self.cards
+		if not self.current_player == 1:
+			card_state[[0, self.current_player-1]] = card_state[[self.current_player-1, 0]]
+		return np.ravel(card_state)
 
 
 

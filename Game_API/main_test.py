@@ -465,7 +465,6 @@ def test_develop_four_player_w_init():
     # Iterate some turns for player and letting it sample randomly from all possible actions
     for i in range(1000):
         actions = g.get_possible_actions(g.current_player)
-
         print('Anzahl möglicher Aktionen: Iteration '+str(i)+'  ' +str(sum(actions)))
         if sum(actions)>=1:
             chosen_action = np.random.choice(len(actions), 1, p=actions/sum(actions))
@@ -489,4 +488,14 @@ def test_develop_four_player_w_init():
     print('Player 4 Settlements:' + str(np.where(g.building_state==4)))
     print('PLayer 4 Streets' +str(np.where(g.roads.get_state()==4)))
 
+    print(g.get_state_space()) # lots of ones and zeros
+
 test_develop_four_player_w_init()
+
+def test_get_state_space():
+    g = Game(random_init=False)
+    print(len(g.get_state_space()))
+
+
+
+test_get_state_space()
