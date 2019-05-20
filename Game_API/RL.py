@@ -128,23 +128,25 @@ class DeepQNetwork:
 
         self.memory_counter += 1
 
-    def choose_action(self, observation):
+    def choose_action(self, observation, possible_actions):
         # to have batch dimension when feed into tf placeholder
         observation = observation[np.newaxis, :]
 
         if np.random.uniform() < self.epsilon:
             # forward feed the observation and get q value for every actions
-            actions_value = self.sess.run(self.q_eval, feed_dict={self.s: observation})
-            action = np.argmax(actions_value)
+            actions_value = self.sess.run(self.q_eval, feed_dict={self.s: observation}).flatten()
+
+            possible_action_indices = np.where(possible_actions==1)[0]
+            action = possible_action_indices[np.argmax(actions_value[possible_action_indices])]
         else:
-            action = np.random.randint(0, self.n_actions)
+            action = np.random.choice(np.where(possible_actions==1)[0])
         return action
 
     def learn(self):
         # check to replace target parameters
         if self.learn_step_counter % self.replace_target_iter == 0:
             self.sess.run(self.replace_target_op)
-            print('\ntarget_params_replaced\n')
+            #print('\ntarget_params_replaced\n')
 
         # sample batch memory from all memory
         if self.memory_counter > self.memory_size:
@@ -204,6 +206,7 @@ class DeepQNetwork:
 
         # increasing epsilon
         self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
+
         self.learn_step_counter += 1
 
     def plot_cost(self):

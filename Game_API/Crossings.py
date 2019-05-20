@@ -32,7 +32,9 @@ class Crossings:
         for neighbouring_tiles in self.neighbouring_tiles:
             _tiles=[]
             for tile in neighbouring_tiles:
-                _tiles.append(tiles[tile])
+                tile_list = list(tiles[tile])
+                tile_list.append(tile)
+                _tiles.append(tile_list)
             connected_tiles.append(_tiles)
 
         # Crossing indexes where a harbour is located

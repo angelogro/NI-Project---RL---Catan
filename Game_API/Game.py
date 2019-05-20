@@ -12,14 +12,16 @@ import Defines
 
 class Game:
 # no_player_trade, no_dev_cards, _no_3vs1_trade
-	def __init__(self,random_init=True,needed_victory_points=8):
+	def __init__(self,action_space='buildings_only',random_init=True,needed_victory_points=8,reward='victory_only'):
 		self.needed_victory_points = needed_victory_points
+		self.reward = reward
 		self.tiles = HexTiles(random_init)
 		self.crossings = Crossings(self.tiles.get_tiles(),self.tiles.harbours)
 		self.roads = Roads(self.crossings.get_neighbouring_crossings())
 		self.crossings.create_connected_roads(self.roads.get_roads())
 		self.building_state = self.crossings.get_building_state()
 		self.dices_results = [2,3,3,4,4,4,5,5,5,5,6,6,6,6,6,7,7,7,7,7,7,8,8,8,8,8,9,9,9,9,10,10,10,11,11,12]
+
 
 
 		# 4 players, 5 resources
@@ -38,15 +40,28 @@ class Game:
 
 		# List of possible action arrays
 		# Key: action space name, Value: [get_possible_actions_function, execute_corresponding_action_function]
-		self.action_array_names_dic = {'build_road':[self.get_possible_actions_build_road,self.place_road],
+		self.action_array_names_dic = {'do_nothing':[self.get_possible_action_do_nothing,self.next_players_turn],
+									   'build_road':[self.get_possible_actions_build_road,self.place_road],
 									   'build_settlement':[self.get_possible_actions_build_settlement,self.place_settlement],
-									   'build_city':[self.get_possible_actions_build_city,self.place_city],
-									   'trade_4vs1':[self.get_possible_actions_trade_bank,self.trade_bank],
-									   'trade_3vs1':[self.get_possible_actions_trade_3vs1,self.trade_3vs1],
-									   'trade_2vs1':[self.get_possible_actions_trade_2vs1,self.trade_2vs1],
-									   'move_robber':[self.get_possible_action_move_robber,self.move_robber],
-									   'rob_player':[self.get_possible_actions_rob_player,self.rob_player],
-									   'do_nothing':[self.get_possible_action_do_nothing,self.next_players_turn]}
+									   'build_city':[self.get_possible_actions_build_city,self.place_city]}
+		assert type(action_space) is str
+		if action_space == 'buildings_only':
+			# Trading necessary, otherwise game can get stuck as not all resources would be available
+			self.action_array_names_dic['trade_4vs1']=[self.get_possible_actions_trade_bank,self.trade_bank]
+			pass
+		elif action_space == 'building_and_trade':
+			self.action_array_names_dic['trade_4vs1']=[self.get_possible_actions_trade_bank,self.trade_bank]
+			self.action_array_names_dic['trade_3vs1']=[self.get_possible_actions_trade_3vs1,self.trade_3vs1]
+			self.action_array_names_dic['trade_2vs1']=[self.get_possible_actions_trade_2vs1,self.trade_2vs1]
+		elif action_space == 'building_trade_and_rob':
+			self.action_array_names_dic['trade_4vs1']=[self.get_possible_actions_trade_bank,self.trade_bank]
+			self.action_array_names_dic['trade_3vs1']=[self.get_possible_actions_trade_3vs1,self.trade_3vs1]
+			self.action_array_names_dic['trade_2vs1']=[self.get_possible_actions_trade_2vs1,self.trade_2vs1]
+			self.action_array_names_dic['move_robber']=[self.get_possible_action_move_robber,self.move_robber]
+			self.action_array_names_dic['rob_player']=[self.get_possible_actions_rob_player,self.rob_player]
+
+
+
 
 		self.state_array_dic = {'tile_state':self.get_state_space_tiles, #number space included in tile_state as in Data Representation
 								#'number_state':self.get_state_space_numbers,
@@ -97,17 +112,17 @@ class Game:
 
 # returns nextState,reward and whether the game is finished
 	# General function which should be implemented at the end.
-	def step(self,action,player_num):
+	def step(self,action):
 
 		# Make state transition
-		self.take_action(action,self.current_player)
-		reward = 0
+		reward = self.take_action(action,self.current_player)
+
 		game_finished = 0
 		if self.get_victory_points()[self.current_player-1]>= self.needed_victory_points:
-			reward = 1
+			reward += 1
 			game_finished = 1
 
-		return self.get_state_space(),reward,self.get_possible_actions(player_num),game_finished
+		return self.get_state_space(),reward,self.get_possible_actions(self.current_player),game_finished
 
 
 	def get_possible_actions(self,player_num):
@@ -130,6 +145,7 @@ class Game:
 				counter+=1
 			else:
 				possible_actions = np.concatenate((possible_actions,function_ref[0](player_num)*1))
+
 		return possible_actions
 
 	def take_action(self,chosen_action_ind,player_num):
@@ -152,11 +168,22 @@ class Game:
 				current_player = self.current_player
 				# Thi calls the action_function with label chosen_action_array_label
 				self.action_array_names_dic[chosen_action_array_label][1](action_ind,player_num)
-				print('Player : '+str(current_player)+' , Action : '+chosen_action_array_label)
+				#print('Player : '+str(current_player)+' , Action : '+chosen_action_array_label+' Index : '+str(action_ind))
 				break
 			else:
 				last_val = val
 		self.count_up_action_counter()
+
+		if self.reward == 'building':
+			if chosen_action_array_label in ['build_road']:
+				return 0.5
+			elif chosen_action_array_label in ['build_settlement','build_city']:
+				return 1
+			else:
+				return -0.1
+
+
+
 
 	def count_up_action_counter(self):
 		"""
@@ -178,7 +205,7 @@ class Game:
 		counter = 0
 		state_array = []
 		for state_name,function_ref in self.state_array_dic.items():
-			print(state_name)
+
 			if counter == 0:
 				state_array = function_ref()
 				counter+=1
@@ -199,7 +226,8 @@ class Game:
 			self.discard_resources()
 
 			# Actually here we have to make sure that the next action taken by the player will be move_robber()
-			self.seven_rolled = 1
+			if 'move_robber' in self.action_array_names_dic.keys():
+				self.seven_rolled = 1
 		else:
 			self.distribute_resources(number)
 
@@ -239,6 +267,9 @@ class Game:
 				continue
 			# Iterate through all neighbouring tiles of the crossing
 			for tile in crossings[i][1]:
+				#Check if robber is on this tile
+				if tile[2] == self.robber:
+					continue
 				# If the rolled number is a number chip on one of those crossings
 				if tile[1]==number:
 
@@ -408,8 +439,9 @@ class Game:
 
 					return final_arr
 
-
+			print('probably happening here')
 			return
+
 
 		if self.check_resources_available(player_num,'Road') == False:
 			return np.zeros(Defines.NUM_EDGES)
@@ -659,6 +691,7 @@ class Game:
 
 		iter_cards = np.array([])
 		# Builds all possible sets of three cards given the cards the player has
+		#print(self.cards)
 		for j in non_zero_card_indices:
 			iter_cards =np.concatenate((iter_cards,np.repeat(j,self.cards[player_num-1,j])))
 
@@ -870,14 +903,14 @@ class Game:
 		self.harbour_space = np.ravel(np.eye(n_highest_value)[np.array(harbour_state)-1])
 
 	def get_state_space_buildings(self):
-		building_state = self.crossings.get_building_state()
+		building_state = self.crossings.get_building_state().copy()
 		building_state[np.where(building_state==9)]=0
 		if not self.current_player == 1:
 			swap_1 = ((building_state==1)+(building_state==5))*(self.current_player-1)
 			swap_player = ((building_state==self.current_player)+(building_state==(self.current_player+4)))*(1-self.current_player)
 			building_state = building_state + swap_1 + swap_player
-		n_highest_value = 8
-		building_state-=1 # As zeros are not necessary in our state space representation
+		n_highest_value = 9
+
 		return np.ravel(np.eye(n_highest_value)[building_state])
 
 	def get_state_space_roads(self):
@@ -896,7 +929,7 @@ class Game:
 		return robber_state
 
 	def get_state_space_cards(self):
-		card_state = self.cards
+		card_state = self.cards.copy()
 		if not self.current_player == 1:
 			card_state[[0, self.current_player-1]] = card_state[[self.current_player-1, 0]]
 		return np.ravel(card_state)

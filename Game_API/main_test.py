@@ -490,7 +490,7 @@ def test_develop_four_player_w_init():
 
     print(g.get_state_space()) # lots of ones and zeros
 
-test_develop_four_player_w_init()
+#test_develop_four_player_w_init()
 
 def test_get_state_space():
     g = Game(random_init=False)
@@ -498,4 +498,9 @@ def test_get_state_space():
 
 
 
-test_get_state_space()
+#test_get_state_space()
+
+def test_argument():
+    g = Game(random_init=False,action_space='str')
+
+test_argument()
