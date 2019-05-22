@@ -503,4 +503,24 @@ def test_get_state_space():
 def test_argument():
     g = Game(random_init=False,action_space='str')
 
-test_argument()
+#test_argument()
+victories = []
+def test_initial_position_bias():
+    # Using the initial fixed setup
+
+
+    # Iterate some turns for player and letting it sample randomly from all possible actions
+    for i in range(100):
+        g = Game(random_init=False)
+        while True:
+            actions = g.get_possible_actions(g.current_player)
+            if sum(actions)>=1:
+                chosen_action = np.random.choice(len(actions), 1, p=actions/sum(actions))
+                g.take_action(chosen_action[0],g.current_player)
+
+            if(np.any(g.get_victory_points()>=8)):
+                victories.append(np.argmax(g.get_victory_points()))
+                print('game '+str(i))
+                break
+
+test_initial_position_bias()

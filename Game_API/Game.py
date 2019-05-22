@@ -115,12 +115,8 @@ class Game:
 	def step(self,action):
 
 		# Make state transition
-		reward = self.take_action(action,self.current_player)
 
-		game_finished = 0
-		if self.get_victory_points()[self.current_player-1]>= self.needed_victory_points:
-			reward += 1
-			game_finished = 1
+		reward, game_finished = self.take_action(action,self.current_player)
 
 		return self.get_state_space(),reward,self.get_possible_actions(self.current_player),game_finished
 
@@ -165,22 +161,32 @@ class Game:
 			if chosen_action_ind < val:
 				chosen_action_array_label = key # eg 'build_city'
 				action_ind = chosen_action_ind-last_val
-				current_player = self.current_player
 				# Thi calls the action_function with label chosen_action_array_label
 				self.action_array_names_dic[chosen_action_array_label][1](action_ind,player_num)
-				#print('Player : '+str(current_player)+' , Action : '+chosen_action_array_label+' Index : '+str(action_ind))
+				#print('Player : '+str(player_num)+' , Action : '+chosen_action_array_label+' Index : '+str(action_ind))
 				break
 			else:
 				last_val = val
 		self.count_up_action_counter()
+		game_finished = 0
 
-		if self.reward == 'building':
-			if chosen_action_array_label in ['build_road']:
-				return 0.5
-			elif chosen_action_array_label in ['build_settlement','build_city']:
-				return 1
+		reward = 0
+		if np.any(self.get_victory_points() >= self.needed_victory_points):
+			game_finished = 1
+			if np.argmax(self.get_victory_points())==0: #Player 1
+				reward += 1
 			else:
-				return -0.1
+				reward -= 1
+		if self.reward == 'victory_only':
+			pass
+		elif self.reward == 'building':
+			if chosen_action_array_label in ['build_road']:
+				reward += 0.5
+			elif chosen_action_array_label in ['build_settlement','build_city']:
+				reward += 1
+			else:
+				reward -= -0.1
+		return reward,game_finished
 
 
 

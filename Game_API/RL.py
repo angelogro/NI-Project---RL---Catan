@@ -36,7 +36,7 @@ class DeepQNetwork:
         # Initialize the params passed from run_this file
         self.n_actions = n_actions
         self.n_features = n_features
-        self.lr = learning_rate
+        self.lr = tf.Variable(learning_rate, trainable=False,dtype=tf.float64)
         self.gamma = reward_decay
         self.epsilon_max = e_greedy
         self.replace_target_iter = replace_target_iter
@@ -47,6 +47,7 @@ class DeepQNetwork:
 
         # total learning step
         self.learn_step_counter = 0
+        self.global_step = tf.Variable(1,name='global_step', trainable=False,dtype=tf.int32)
 
         # initialize zero memory [s, a, r, s_]
         self.memory = np.zeros((self.memory_size, n_features * 2 + 2))
@@ -59,8 +60,9 @@ class DeepQNetwork:
 
 
         self.replace_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
+        self.count_up_global_step_op = tf.assign_add(self.global_step,1)
 
-        self.sess = tf.Session()
+        self.sess = tf.InteractiveSession()
 
         if output_graph:
             # $ tensorboard --logdir=logs
@@ -95,8 +97,13 @@ class DeepQNetwork:
 
         with tf.variable_scope('loss'):
             self.loss = tf.reduce_mean(tf.squared_difference(self.q_target, self.q_eval))
-        with tf.variable_scope('train'):
-            self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
+
+        # Added with the hope to avoid high losses when epsilon increases
+        with tf.variable_scope('decay_lr'):
+            self.decay_lr = tf.train.exponential_decay(self.lr, self.global_step,
+                                                       1, 0.999, staircase=False)
+        with tf.variable_scope('train') as self.train_var:
+            self._train_op = tf.train.RMSPropOptimizer(self.decay_lr).minimize(self.loss)
 
         # ------------------ build target_net ------------------
         self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')    # input
@@ -143,9 +150,11 @@ class DeepQNetwork:
         return action
 
     def learn(self):
+        #
         # check to replace target parameters
         if self.learn_step_counter % self.replace_target_iter == 0:
             self.sess.run(self.replace_target_op)
+
             #print('\ntarget_params_replaced\n')
 
         # sample batch memory from all memory
@@ -211,12 +220,27 @@ class DeepQNetwork:
 
     def plot_cost(self):
         import matplotlib.pyplot as plt
+        plt.figure(0)
         plt.plot(np.arange(len(self.cost_his)), self.cost_his)
         plt.ylabel('Cost')
         plt.xlabel('training steps')
         plt.show()
 
+    def get_num_total_trainable_parameters(self):
+        total_parameters = 0
+        for variable in tf.trainable_variables():
+            # shape is an array of tf.Dimension
+            shape = variable.get_shape()
+            variable_parameters = 1
+            for dim in shape:
+                variable_parameters *= dim.value
 
+            total_parameters += variable_parameters
+        return total_parameters
 
+    def trigger_adapt_learning_rate(self):
+        ### Every 20 games
 
+        self.sess.run(self.count_up_global_step_op)
+        pass
 
