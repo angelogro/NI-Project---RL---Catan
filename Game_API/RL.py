@@ -103,7 +103,7 @@ class DeepQNetwork:
             self.decay_lr = tf.train.exponential_decay(self.lr, self.global_step,
                                                        1, 0.999, staircase=False)
         with tf.variable_scope('train') as self.train_var:
-            self._train_op = tf.train.RMSPropOptimizer(self.decay_lr).minimize(self.loss)
+            self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
 
         # ------------------ build target_net ------------------
         self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')    # input

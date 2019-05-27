@@ -16,7 +16,7 @@ epsilons = []
 def run_Game():
     step = 0
 
-    for episode in range(3000):
+    for episode in range(5000):
         # initial observation, get state space
         env = Game(random_init=False,action_space='buildings_only',needed_victory_points=3,reward='victory_only')
         # -----TO DO -------- Should have a method in Game to return the state space getStateSpace()
@@ -64,6 +64,7 @@ def run_Game():
             if done:
                 print('Game '+ str(episode)+' finished after ' + str(iteration_counter)+' iterations.####################################################')
                 print('Victory Points ' +str(env.get_victory_points())+'\n')
+                RL.epsilon = 1-np.exp(-episode/1500)
                 print('Epsilon '+str(RL.epsilon))
                 victories.append(np.argmax(env.get_victory_points()))
                 epsilons.append(RL.epsilon)
@@ -119,8 +120,8 @@ if __name__ == "__main__":
     RL = DeepQNetwork(len(env.get_possible_actions(1)), len(env.get_state_space()), # total action, total features/states
                       learning_rate=0.01,
                       reward_decay=0.99,
-                      e_greedy=0.9,
-                      e_greedy_increment=0.00005,
+                      e_greedy=0,
+                     # e_greedy_increment=0.00005,
                       replace_target_iter=200,
                       memory_size=100000
                       # output_graph=True
