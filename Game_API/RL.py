@@ -14,6 +14,8 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 
+
+
 np.random.seed(1)
 tf.set_random_seed(1)
 
@@ -131,6 +133,7 @@ class DeepQNetwork:
 
         # replace the old memory with new memory
         index = self.memory_counter % self.memory_size
+
         self.memory[index, :] = transition
 
         self.memory_counter += 1
