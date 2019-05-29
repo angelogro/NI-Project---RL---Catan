@@ -505,22 +505,44 @@ def test_argument():
 
 #test_argument()
 victories = []
+points = []
+trade4vs1 = [0,0,0,0]
+buildroad = [0,0,0,0]
+buildsettlement = [0,0,0,0]
+buildcity = [0,0,0,0]
+trade3vs1 = [0,0,0,0]
+trade2vs1 = [0,0,0,0]
 def test_initial_position_bias():
     # Using the initial fixed setup
 
 
     # Iterate some turns for player and letting it sample randomly from all possible actions
     for i in range(100):
-        g = Game(random_init=False)
+        g = Game(random_init=False,action_space='building_and_trade')
         while True:
             actions = g.get_possible_actions(g.current_player)
             if sum(actions)>=1:
                 chosen_action = np.random.choice(len(actions), 1, p=actions/sum(actions))
-                g.take_action(chosen_action[0],g.current_player)
-
+                _,__,clabel = g.take_action(chosen_action[0],g.current_player)
+                if clabel == 'build_road':
+                    buildroad[g.current_player-1]+=1
+                elif clabel == 'build_settlement':
+                    buildsettlement[g.current_player-1]+=1
+                elif clabel == 'build_city':
+                    buildcity[g.current_player-1]+=1
+                elif clabel == 'trade_4vs1':
+                    trade4vs1[g.current_player-1]+=1
+                elif clabel == 'trade_3vs1':
+                    trade3vs1[g.current_player-1]+=1
+                elif clabel == 'trade_2vs1':
+                    trade2vs1[g.current_player-1]+=1
             if(np.any(g.get_victory_points()>=8)):
                 victories.append(np.argmax(g.get_victory_points()))
+                points.append(g.get_victory_points())
                 print('game '+str(i))
+                print(g.get_victory_points())
                 break
 
 test_initial_position_bias()
+
+

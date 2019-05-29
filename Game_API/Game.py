@@ -732,10 +732,10 @@ class Game:
 
 	def has_3vs1_port(self,player_num):
 		building_state =self.crossings.get_building_state()*(self.crossings.get_building_state()<9)
-		settlement_state = (building_state==(player_num))+(building_state==(player_num%4))
+		settlement_state = (building_state==(player_num))+(building_state==(player_num+4))
 
 		harbour_state = list(zip(*self.crossings.get_crossings()))[2]
-		return np.any((harbour_state*settlement_state==Defines.PORT_ANY))
+		return np.any(((harbour_state*settlement_state)==Defines.PORT_ANY))
 
 	def has_2vs1_port(self,player_num):
 		"""
@@ -864,7 +864,7 @@ class Game:
 		player_num-=1
 		traded_resource = int(action_index/4)
 		self.cards[player_num,traded_resource]-=2
-		self.cards[player_num,self.traded_resources[action_index]]+=+1
+		self.cards[player_num,self.traded_resources[action_index]]+=1
 
 	def get_victory_points(self):
 		"""

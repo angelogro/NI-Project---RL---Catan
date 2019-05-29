@@ -2,12 +2,31 @@ from Game import Game
 from RL import DeepQNetwork
 import numpy as np
 from matplotlib import pyplot as plt
+from xml import etree
+import os
+import pickle
 
 class TrainCatan:
 
-    def __init__(self,plot_interval=100,action_space='buildings_only',position_training_instances = (0,1,0,1),opponents = 'random_sample'):
+    def __init__(self,plot_interval=100,action_space='buildings_only',position_training_instances = (0,1,0,1),
+                 needed_victory_points = 5,reward = 'building',
+                 learning_rate=0.01,
+                 reward_decay=0.95,
+                 e_greedy=0,
+                 replace_target_iter=300,
+                 memory_size=100000,
+                 num_games=5000,
+                 final_epsilon=0.9,
+                 opponents = 'random_sample'):
         self.plot_interval = plot_interval
         self.action_space = action_space
+
+        self.position_training_instances = position_training_instances
+        self.needed_victory_points,self.reward = needed_victory_points,reward
+        self.learning_rate,self.reward_decay,self.e_greedy,self.replace_target_iter,self.memory_size  = learning_rate,reward_decay,e_greedy,replace_target_iter,memory_size
+        self.num_games = num_games
+        self.final_epsilon = final_epsilon
+
         self.init_online_plot()
         self.init_training_environment()
         self.training_players = np.where(np.array(position_training_instances)==1)[0]
@@ -16,14 +35,33 @@ class TrainCatan:
         self.reward_buffer=[None,None,None,None]
 
 
+    def save_hyperparameters(self,filename):
+        del(self.RL)
+        if not os.path.exists('hyperparameters'):
+            os.makedirs('hyperparameters')
+        if not os.path.exists('hyperparameters/'+filename):
+            os.makedirs('hyperparameters/'+filename)
+        f = open('hyperparameters/'+filename+'/'+filename, 'wb')
+        pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
+        f.close()
+
+    @staticmethod
+    def load_hyperparameters(self,filename):
+        if not os.path.exists('hyperparameters/'+filename):
+            return
+        f = open('hyperparameters/'+filename+'/'+filename, 'rb')
+        return pickle.load(f)
 
 
-    def start_training(self,num_games,final_epsilon=0.99):
-        eps_grad = -num_games/np.log(1-final_epsilon)
+
+
+
+    def start_training(self):
+        eps_grad = -self.num_games/np.log(1-self.final_epsilon)
         step = 0
-        for episode in range(num_games):
+        for episode in range(self.num_games):
             # initial observation, get state space
-            env = Game(random_init=False,action_space=self.action_space,needed_victory_points=4,reward='victory_only')
+            env = Game(random_init=False,action_space=self.action_space,needed_victory_points=self.needed_victory_points,reward=self.reward)
 
             state_space = env.get_state_space()
             possible_actions = env.get_possible_actions(env.current_player)
@@ -61,7 +99,7 @@ class TrainCatan:
 
                 # The game executes the action chosen by RL and gets next state and reward
 
-                if (step > 2000) and (step % 10 == 0) :
+                if (step > 2000) and (step % 50 == 0) :
                     self.RL.learn()
 
 
@@ -96,20 +134,17 @@ class TrainCatan:
     def init_training_environment(self):
         env = Game(action_space=self.action_space)
         self.RL = DeepQNetwork(len(env.get_possible_actions(1)), len(env.get_state_space()), # total action, total features/states
-                      learning_rate=0.01,
-                      reward_decay=0.99,
-                      e_greedy=0,
-                      # e_greedy_increment=0.00005,
-                      replace_target_iter=200,
-                      memory_size=100000
-                      # output_graph=True
+                      learning_rate=self.learning_rate,
+                      reward_decay=self.reward_decay,
+                      e_greedy=self.e_greedy,
+                      replace_target_iter=self.replace_target_iter,
+                      memory_size=self.memory_size
                       )
 
     def init_online_plot(self):
         self.statistics = []
         self.victories = []
         self.epsilons = []
-        self.num_games = []
         plt.figure(2)
         plt.plot([],[],label='Player 1')
         plt.plot([],[],label='Player 2')

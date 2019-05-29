@@ -6,8 +6,8 @@ from TrainCatan import TrainCatan
 
 train = None
 if __name__ == "__main__":
-    train = TrainCatan(plot_interval=100)
-    train.start_training(5000,0.9)
+    train = TrainCatan(plot_interval=100,action_space='building_and_trade',position_training_instances=(0,1,0,1))
+
 
 
 
