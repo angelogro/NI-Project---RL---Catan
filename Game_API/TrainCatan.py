@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 
 class TrainCatan:
 
-    def __init__(self,plot_interval=100,action_space='buildings_only',position_training_instances = (1,1,0,0),opponents = 'random_sample'):
+    def __init__(self,plot_interval=100,action_space='buildings_only',position_training_instances = (0,1,0,1),opponents = 'random_sample'):
         self.plot_interval = plot_interval
         self.action_space = action_space
         self.init_online_plot()
@@ -13,6 +13,7 @@ class TrainCatan:
         self.training_players = np.where(np.array(position_training_instances)==1)[0]
         self.state_space_buffer=[None,None,None,None]
         self.action_buffer=[None,None,None,None]
+        self.reward_buffer=[None,None,None,None]
 
 
 
@@ -22,15 +23,17 @@ class TrainCatan:
         step = 0
         for episode in range(num_games):
             # initial observation, get state space
-            env = Game(random_init=False,action_space=self.action_space,needed_victory_points=3,reward='victory_only')
+            env = Game(random_init=False,action_space=self.action_space,needed_victory_points=4,reward='victory_only')
 
             state_space = env.get_state_space()
             possible_actions = env.get_possible_actions(env.current_player)
 
             iteration_counter = 0
-            state_space_p1 = None
-            action_p1 = None
-            reward = None
+            self.state_space_buffer=[None,None,None,None]
+            self.action_buffer=[None,None,None,None]
+            self.reward_buffer=[None,None,None,None]
+            self.done_buffer=[None,None,None,None]
+            
             done = 0
             while True:
                 # fresh env
@@ -38,22 +41,22 @@ class TrainCatan:
 
                 iteration_counter += 1
                 # RL choose action based on state
-
                 if env.current_player-1 in self.training_players:
                     buffer_player = env.current_player-1
                     self.action_buffer[buffer_player] = self.RL.choose_action(state_space,possible_actions)
-                    state_space_, reward, possible_actions, done = env.step(self.action_buffer[buffer_player])
+                    state_space_, self.reward_buffer[buffer_player], possible_actions, self.done_buffer[buffer_player] = env.step(self.action_buffer[buffer_player])
                     if env.current_player-1 != buffer_player: #When player one chooses do Nothing
                         self.state_space_buffer[buffer_player] = state_space
                     else:
-                        self.RL.store_transition(state_space, self.action_buffer[buffer_player], reward, state_space_)
+                        self.RL.store_transition(state_space, self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
                 else:
                     action = np.random.choice(len(possible_actions), 1, p=possible_actions/sum(possible_actions))[0]
                     state_space_, r, possible_actions, d = env.step(action)
                     if env.current_player-1 in self.training_players:
                         buffer_player = env.current_player-1
                         if self.state_space_buffer[buffer_player] is not None and self.action_buffer[buffer_player] is not None:
-                            self.RL.store_transition(self.state_space_buffer[buffer_player], self.action_buffer[buffer_player], reward, state_space_)
+                            self.RL.store_transition(self.state_space_buffer[buffer_player], self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
+
 
 
                 # The game executes the action chosen by RL and gets next state and reward
@@ -66,7 +69,10 @@ class TrainCatan:
                 state_space = state_space_
 
                 # break while loop when end of this episode
-                if done:
+                step += 1
+                
+                if np.all(np.array(self.done_buffer)[self.training_players]==1):
+                    print(self.reward_buffer)
                     print('Game '+ str(episode)+' finished after ' + str(iteration_counter)+' iterations.####################################################')
                     print('Victory Points ' +str(env.get_victory_points())+'\n')
                     self.RL.epsilon = 1-np.exp(-episode/eps_grad)
@@ -75,12 +81,13 @@ class TrainCatan:
                     self.epsilons.append(self.RL.epsilon)
                     self.statistics.append(iteration_counter)
 
-                    if episode%self.plot_interval==0 and episode>0:
+                    if (len(self.victories)%self.plot_interval==0) and (episode>0):
+                        
                         self.plot_statistics_online(self.victories, self.epsilons,self.plot_interval)
 
                     break
 
-                step += 1
+                
         plt.show()
         # end of game
         print('Run Finished')

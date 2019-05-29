@@ -173,7 +173,7 @@ class Game:
 		reward = 0
 		if np.any(self.get_victory_points() >= self.needed_victory_points):
 			game_finished = 1
-			if np.argmax(self.get_victory_points())==0: #Player 1
+			if np.argmax(self.get_victory_points())==player_num-1: #Player 1
 				reward += 1
 			else:
 				reward -= 1
