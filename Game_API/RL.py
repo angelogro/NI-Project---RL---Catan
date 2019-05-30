@@ -247,3 +247,12 @@ class DeepQNetwork:
         self.sess.run(self.count_up_global_step_op)
         pass
 
+    def save_params(self, modelname):
+         self.saver = tf.train.Saver(max_to_keep = 1) 
+         self.saver.save(self.sess, modelname)
+
+    def load_params(self, modelname):
+         self.saver = tf.train.Saver(max_to_keep = 1)
+         #self.saver = tf.train.import_meta_graph(modelname)
+         self.saver.restore(self.sess, "/tmp/1stplayer_3000ep.ckpt")
+         print('Params loaded..')

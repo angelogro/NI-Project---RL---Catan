@@ -6,7 +6,7 @@ from xml import etree
 import os
 import pickle
 
-class TrainCatan:
+class PlayCatan:
 
     def __init__(self,plot_interval=100,action_space='buildings_only',position_training_instances = (1,0,0,0),
                  needed_victory_points = 5,reward = 'building',
@@ -35,29 +35,8 @@ class TrainCatan:
         self.reward_buffer=[None,None,None,None]
 
 
-    def save_hyperparameters(self,filename):
-        del(self.RL)
-        if not os.path.exists('hyperparameters'):
-            os.makedirs('hyperparameters')
-        if not os.path.exists('hyperparameters/'+filename):
-            os.makedirs('hyperparameters/'+filename)
-        f = open('hyperparameters/'+filename+'/'+filename, 'wb')
-        pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
-        f.close()
 
-    @staticmethod
-    def load_hyperparameters(self,filename):
-        if not os.path.exists('hyperparameters/'+filename):
-            return
-        f = open('hyperparameters/'+filename+'/'+filename, 'rb')
-        return pickle.load(f)
-
-
-
-
-
-    def start_training(self):
-        eps_grad = -self.num_games/np.log(1-self.final_epsilon)
+    def start_playing(self):
         step = 0
         for episode in range(self.num_games):
             # initial observation, get state space
@@ -82,38 +61,30 @@ class TrainCatan:
                 if env.current_player-1 in self.training_players:
                     buffer_player = env.current_player-1
                     self.action_buffer[buffer_player] = self.RL.choose_action(state_space,possible_actions)
-                    state_space_, self.reward_buffer[buffer_player], possible_actions, self.done_buffer[buffer_player] = env.step(self.action_buffer[buffer_player])
+                    state_space_, _, possible_actions, self.done_buffer[buffer_player] = env.step(self.action_buffer[buffer_player])
                     if env.current_player-1 != buffer_player: #When player one chooses do Nothing
                         self.state_space_buffer[buffer_player] = state_space
-                    else:
-                        self.RL.store_transition(state_space, self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
+                    
                 else:
                     action = np.random.choice(len(possible_actions), 1, p=possible_actions/sum(possible_actions))[0]
                     state_space_, r, possible_actions, d = env.step(action)
                     if env.current_player-1 in self.training_players:
                         buffer_player = env.current_player-1
-                        if self.state_space_buffer[buffer_player] is not None and self.action_buffer[buffer_player] is not None:
-                            self.RL.store_transition(self.state_space_buffer[buffer_player], self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
-
+                        
 
 
                 # The game executes the action chosen by RL and gets next state and reward
 
-                if (step > 2000) and (step % 50 == 0) :
-                    self.RL.learn()
-
-
-                # swap observation
+               # swap observation
                 state_space = state_space_
 
                 # break while loop when end of this episode
                 step += 1
                 
                 if np.all(np.array(self.done_buffer)[self.training_players]==1):
-                    print(self.reward_buffer)
                     print('Game '+ str(episode)+' finished after ' + str(iteration_counter)+' iterations.####################################################')
                     print('Victory Points ' +str(env.get_victory_points())+'\n')
-                    self.RL.epsilon = 1-np.exp(-episode/eps_grad)
+                    self.RL.epsilon = 1
                     print('Epsilon '+str(self.RL.epsilon))
                     self.victories.append(np.argmax(env.get_victory_points()))
                     self.epsilons.append(self.RL.epsilon)
@@ -125,7 +96,6 @@ class TrainCatan:
 
                     break
 
-        self.RL.save_params("/tmp/1stplayer_3000ep.ckpt")
         plt.show()
         # end of game
         print('Run Finished')
@@ -140,6 +110,8 @@ class TrainCatan:
                       replace_target_iter=self.replace_target_iter,
                       memory_size=self.memory_size
                       )
+        self.RL.load_params('/tmp/1stplayer_3000ep.ckpt')
+
 
     def init_online_plot(self):
         self.statistics = []
