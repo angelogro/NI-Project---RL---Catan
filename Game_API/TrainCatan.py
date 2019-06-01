@@ -11,9 +11,9 @@ class TrainCatan:
     def __init__(self,plot_interval=100,action_space='buildings_only',position_training_instances = (0,1,0,1),
                  needed_victory_points = 5,reward = 'building',
                  learning_rate=0.01,
-                 reward_decay=0.95,
+                 reward_decay=0.99,
                  e_greedy=0,
-                 replace_target_iter=300,
+                 replace_target_iter=200,
                  memory_size=100000,
                  num_games=5000,
                  final_epsilon=0.9,
@@ -23,7 +23,7 @@ class TrainCatan:
 
         self.position_training_instances = position_training_instances
         self.needed_victory_points,self.reward = needed_victory_points,reward
-        self.learning_rate,self.reward_decay,self.e_greedy,self.replace_target_iter,self.memory_size  = learning_rate,reward_decay,e_greedy,replace_target_iter,memory_size
+        self.learning_rate,self.reward_decay,self.e_greedy,self.replace_target_iter,self.memory_size = learning_rate,reward_decay,e_greedy,replace_target_iter,memory_size
         self.num_games = num_games
         self.final_epsilon = final_epsilon
 
@@ -56,7 +56,7 @@ class TrainCatan:
 
 
 
-    def start_training(self):
+    def start_training(self,train = True):
         eps_grad = -self.num_games/np.log(1-self.final_epsilon)
         step = 0
         for episode in range(self.num_games):
@@ -86,22 +86,22 @@ class TrainCatan:
                     if env.current_player-1 != buffer_player: #When player one chooses do Nothing
                         self.state_space_buffer[buffer_player] = state_space
                     else:
-                        self.RL.store_transition(state_space, self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
+                        if train:
+                            self.RL.store_transition(state_space, self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
                 else:
                     action = np.random.choice(len(possible_actions), 1, p=possible_actions/sum(possible_actions))[0]
                     state_space_, r, possible_actions, d = env.step(action)
                     if env.current_player-1 in self.training_players:
                         buffer_player = env.current_player-1
-                        if self.state_space_buffer[buffer_player] is not None and self.action_buffer[buffer_player] is not None:
+                        if self.state_space_buffer[buffer_player] is not None and self.action_buffer[buffer_player] is not None and train:
                             self.RL.store_transition(self.state_space_buffer[buffer_player], self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
 
 
 
                 # The game executes the action chosen by RL and gets next state and reward
 
-                if (step > 2000) and (step % 50 == 0) :
+                if (step > 2000) and (step % 50 == 0) and train:
                     self.RL.learn()
-
 
                 # swap observation
                 state_space = state_space_
@@ -113,7 +113,8 @@ class TrainCatan:
                     print(self.reward_buffer)
                     print('Game '+ str(episode)+' finished after ' + str(iteration_counter)+' iterations.####################################################')
                     print('Victory Points ' +str(env.get_victory_points())+'\n')
-                    self.RL.epsilon = 1-np.exp(-episode/eps_grad)
+                    if train :
+                        self.RL.epsilon = 1-np.exp(-episode/eps_grad)
                     print('Epsilon '+str(self.RL.epsilon))
                     self.victories.append(np.argmax(env.get_victory_points()))
                     self.epsilons.append(self.RL.epsilon)
@@ -129,6 +130,16 @@ class TrainCatan:
         plt.show()
         # end of game
         print('Run Finished')
+
+    def play_game(self,position_training_instances = (1,0,0,0),epsilon=1.0):
+        if not hasattr(self,'RL'):
+            print('No reinforcement learning instance available.')
+            return
+        self.init_online_plot()
+        self.RL.epsilon = epsilon
+        self.training_players = np.where(np.array(position_training_instances)==1)[0]
+        print(self.training_players)
+        self.start_training(train=False)
 
 
     def init_training_environment(self):

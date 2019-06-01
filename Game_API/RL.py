@@ -33,9 +33,10 @@ class DeepQNetwork:
             memory_size=500,
             batch_size=32,
             e_greedy_increment=None,
-            output_graph=False,
+            output_graph=True,
     ):
         # Initialize the params passed from run_this file
+        self.summaries_dir = 'Summaries'
         self.n_actions = n_actions
         self.n_features = n_features
         self.lr = tf.Variable(learning_rate, trainable=False,dtype=tf.float64)
@@ -46,15 +47,12 @@ class DeepQNetwork:
         self.batch_size = batch_size
         self.epsilon_increment = e_greedy_increment
         self.epsilon = 0 if e_greedy_increment is not None else self.epsilon_max
-
-        # total learning step
         self.learn_step_counter = 0
-        self.global_step = tf.Variable(1,name='global_step', trainable=False,dtype=tf.int32)
-
         # initialize zero memory [s, a, r, s_]
         self.memory = np.zeros((self.memory_size, n_features * 2 + 2))
 
         # consist of [target_net, evaluate_net]
+        self.sess = tf.InteractiveSession()
         self._build_net()
         # get_collection return the list of values associated with target_net_params & eval_net_params (refer to  _build_net)
         t_params = tf.get_collection('target_net_params')
@@ -62,9 +60,8 @@ class DeepQNetwork:
 
 
         self.replace_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
-        self.count_up_global_step_op = tf.assign_add(self.global_step,1)
 
-        self.sess = tf.InteractiveSession()
+
 
         if output_graph:
             # $ tensorboard --logdir=logs
@@ -87,23 +84,29 @@ class DeepQNetwork:
 
             # first layer. collections is used later when assign to target net
             with tf.variable_scope('l1'):
-                w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
-                b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
-                l1 = tf.nn.relu(tf.matmul(self.s, w1) + b1)
+                self.w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
+                #self.variable_summaries(w1)
+                self.b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
+                #self.variable_summaries(b1)
+                self.l1 = tf.nn.relu(tf.matmul(self.s, self.w1) + self.b1)
 
             # second layer. collections is used later when assign to target net
             with tf.variable_scope('l2'):
-                w2 = tf.get_variable('w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
-                b2 = tf.get_variable('b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
-                self.q_eval = tf.matmul(l1, w2) + b2
+                self.w2 = tf.get_variable('w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
+                #self.variable_summaries(w2)
+                self.b2 = tf.get_variable('b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
+                #self.variable_summaries(b2)
+                self.q_eval = tf.matmul(self.l1, self.w2) + self.b2
+
+        # Merge all the summaries and write them out to /tmp/mnist_logs (by default)
+        merged = tf.summary.merge_all()
+        #self.train_writer = tf.summary.FileWriter(self.summaries_dir + '/train',
+         #                                    self.sess.graph)
+        #test_writer = tf.summary.FileWriter(self.summaries_dir + '/test')
 
         with tf.variable_scope('loss'):
             self.loss = tf.reduce_mean(tf.squared_difference(self.q_target, self.q_eval))
 
-        # Added with the hope to avoid high losses when epsilon increases
-        with tf.variable_scope('decay_lr'):
-            self.decay_lr = tf.train.exponential_decay(self.lr, self.global_step,
-                                                       1, 0.999, staircase=False)
         with tf.variable_scope('train') as self.train_var:
             self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
 
@@ -184,36 +187,16 @@ class DeepQNetwork:
 
         q_target[batch_index, eval_act_index] = reward + self.gamma * np.max(q_next, axis=1)
 
-        """
-        For example in this batch I have 2 samples and 3 actions:
-        q_eval =
-        [[1, 2, 3],
-         [4, 5, 6]]
-
-        q_target = q_eval =
-        [[1, 2, 3],
-         [4, 5, 6]]
-
-        Then change q_target with the real q_target value w.r.t the q_eval's action.
-        For example in:
-            sample 0, I took action 0, and the max q_target value is -1;
-            sample 1, I took action 2, and the max q_target value is -2:
-        q_target =
-        [[-1, 2, 3],
-         [4, 5, -2]]
-
-        So the (q_target - q_eval) becomes:
-        [[(-1)-(1), 0, 0],
-         [0, 0, (-2)-(6)]]
-
-        We then backpropagate this error w.r.t the corresponding action to network,
-        leave other action as error=0 cause we didn't choose it.
-        """
 
         # train eval network
-        _, self.cost = self.sess.run([self._train_op, self.loss],
+        summary, self.cost = self.sess.run([self._train_op, self.loss],
                                      feed_dict={self.s: batch_memory[:, :self.n_features],
                                                 self.q_target: q_target})
+
+        if summary is not None:
+            print('summ**********************************************************************************************')
+            self.train_writer.add_summary(summary, self.learn_step_counter)
+
         self.cost_his.append(self.cost)
 
         # increasing epsilon
@@ -241,9 +224,16 @@ class DeepQNetwork:
             total_parameters += variable_parameters
         return total_parameters
 
-    def trigger_adapt_learning_rate(self):
-        ### Every 20 games
 
-        self.sess.run(self.count_up_global_step_op)
-        pass
+    def variable_summaries(self,var):
+        """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+        with tf.name_scope('summaries'):
+            mean = tf.reduce_mean(var)
+            tf.summary.scalar('mean', mean)
+            with tf.name_scope('stddev'):
+                stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+            tf.summary.scalar('stddev', stddev)
+            tf.summary.scalar('max', tf.reduce_max(var))
+            tf.summary.scalar('min', tf.reduce_min(var))
+            tf.summary.histogram('histogram', var)
 
