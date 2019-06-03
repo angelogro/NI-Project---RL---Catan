@@ -13,7 +13,7 @@ gym: 0.7.3
 import numpy as np
 import pandas as pd
 import tensorflow as tf
-
+from scipy.special import softmax
 
 
 np.random.seed(1)
@@ -34,6 +34,7 @@ class DeepQNetwork:
             batch_size=32,
             e_greedy_increment=None,
             output_graph=True,
+            softmax_choice=False,
     ):
         # Initialize the params passed from run_this file
         self.summaries_dir = 'Summaries'
@@ -46,6 +47,7 @@ class DeepQNetwork:
         self.memory_size = memory_size
         self.batch_size = batch_size
         self.epsilon_increment = e_greedy_increment
+        self.softmax_choice = softmax_choice
         self.epsilon = 0 if e_greedy_increment is not None else self.epsilon_max
         self.learn_step_counter = 0
         # initialize zero memory [s, a, r, s_]
@@ -85,18 +87,15 @@ class DeepQNetwork:
             # first layer. collections is used later when assign to target net
             with tf.variable_scope('l1'):
                 self.w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
-                #self.variable_summaries(w1)
                 self.b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
-                #self.variable_summaries(b1)
                 self.l1 = tf.nn.relu(tf.matmul(self.s, self.w1) + self.b1)
 
             # second layer. collections is used later when assign to target net
             with tf.variable_scope('l2'):
                 self.w2 = tf.get_variable('w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
-                #self.variable_summaries(w2)
                 self.b2 = tf.get_variable('b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
-                #self.variable_summaries(b2)
                 self.q_eval = tf.matmul(self.l1, self.w2) + self.b2
+
 
         # Merge all the summaries and write them out to /tmp/mnist_logs (by default)
         merged = tf.summary.merge_all()
@@ -105,7 +104,7 @@ class DeepQNetwork:
         #test_writer = tf.summary.FileWriter(self.summaries_dir + '/test')
 
         with tf.variable_scope('loss'):
-            self.loss = tf.reduce_mean(tf.squared_difference(self.q_target, self.q_eval))
+            self.loss = tf.losses.huber_loss(self.q_target, self.q_eval)
 
         with tf.variable_scope('train') as self.train_var:
             self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
@@ -148,9 +147,13 @@ class DeepQNetwork:
         if np.random.uniform() < self.epsilon:
             # forward feed the observation and get q value for every actions
             actions_value = self.sess.run(self.q_eval, feed_dict={self.s: observation}).flatten()
-
             possible_action_indices = np.where(possible_actions==1)[0]
-            action = possible_action_indices[np.argmax(actions_value[possible_action_indices])]
+            q_poss = actions_value[possible_action_indices]
+            if self.softmax_choice:
+                q_softmax = softmax(q_poss)
+                return possible_action_indices[np.random.choice(len(q_softmax),1,p=q_softmax)[0]]
+
+            action = possible_action_indices[np.argmax(q_poss)]
         else:
             action = np.random.choice(np.where(possible_actions==1)[0])
         return action
@@ -193,14 +196,10 @@ class DeepQNetwork:
                                      feed_dict={self.s: batch_memory[:, :self.n_features],
                                                 self.q_target: q_target})
 
-        if summary is not None:
-            print('summ**********************************************************************************************')
-            self.train_writer.add_summary(summary, self.learn_step_counter)
-
         self.cost_his.append(self.cost)
 
         # increasing epsilon
-        self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
+        #self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
 
         self.learn_step_counter += 1
 

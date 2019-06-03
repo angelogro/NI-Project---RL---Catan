@@ -116,9 +116,9 @@ class Game:
 
 		# Make state transition
 
-		reward, game_finished = self.take_action(action,self.current_player)
+		reward, game_finished,clabel = self.take_action(action,self.current_player)
 
-		return self.get_state_space(),reward,self.get_possible_actions(self.current_player),game_finished
+		return self.get_state_space(),reward,self.get_possible_actions(self.current_player),game_finished,clabel
 
 
 	def get_possible_actions(self,player_num):
@@ -186,7 +186,7 @@ class Game:
 				reward += 1
 			else:
 				reward -= -0.1
-		return reward,game_finished
+		return reward,game_finished,chosen_action_array_label
 
 
 
@@ -438,7 +438,6 @@ class Game:
 			for crossing_index in ind_with_buildings:
 				connected_roads = self.roads.get_state()
 				# If no road connected to the settlement yet...
-
 				if np.sum(connected_roads[self.crossings.connected_roads[crossing_index]])==0:
 					final_arr = np.zeros(Defines.NUM_EDGES)
 					final_arr[self.crossings.connected_roads[crossing_index]]=1

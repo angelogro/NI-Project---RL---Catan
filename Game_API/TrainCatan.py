@@ -17,6 +17,8 @@ class TrainCatan:
                  memory_size=100000,
                  num_games=5000,
                  final_epsilon=0.9,
+                 epsilon_increase=0, #since which game the epsilon shall start to increase exponentially
+                 softmax_choice= False,
                  opponents = 'random_sample'):
         self.plot_interval = plot_interval
         self.action_space = action_space
@@ -26,6 +28,8 @@ class TrainCatan:
         self.learning_rate,self.reward_decay,self.e_greedy,self.replace_target_iter,self.memory_size = learning_rate,reward_decay,e_greedy,replace_target_iter,memory_size
         self.num_games = num_games
         self.final_epsilon = final_epsilon
+        self.epsilon_increase = epsilon_increase
+        self.softmax_choice = softmax_choice
 
         self.init_online_plot()
         self.init_training_environment()
@@ -52,12 +56,43 @@ class TrainCatan:
         f = open('hyperparameters/'+filename+'/'+filename, 'rb')
         return pickle.load(f)
 
+    def init_taken_action_storage(self):
+        self.donothing = [0,0,0,0]
+        self.trade4vs1 = [0,0,0,0]
+        self.buildroad = [0,0,0,0]
+        self.buildsettlement = [0,0,0,0]
+        self.buildcity = [0,0,0,0]
+        self.trade3vs1 = [0,0,0,0]
+        self.trade2vs1 = [0,0,0,0]
 
+    def add_action_to_storage(self,clabel,player):
+        if clabel == 'build_road':
+            self.buildroad[player]+=1
+        elif clabel == 'build_settlement':
+            self.buildsettlement[player]+=1
+        elif clabel == 'build_city':
+            self.buildcity[player]+=1
+        elif clabel == 'trade_4vs1':
+            self.trade4vs1[player]+=1
+        elif clabel == 'trade_3vs1':
+            self.trade3vs1[player]+=1
+        elif clabel == 'trade_2vs1':
+            self.trade2vs1[player]+=1
+        elif clabel == 'do_nothing':
+            self.donothing[player]+=1
 
+    def print_stored_actions(self):
+        print('Do Nothing: '+str(self.donothing))
+        print('Trade4vs1: '+str(self.trade4vs1))
+        print('Trade3vs1: '+str(self.trade3vs1))
+        print('Trade2vs1: '+str(self.trade2vs1))
+        print('BuildRoad: '+str(self.buildroad))
+        print('BuildSettlement: '+str(self.buildsettlement))
+        print('BuildCity: '+str(self.buildcity))
 
-
-    def start_training(self,train = True):
-        eps_grad = -self.num_games/np.log(1-self.final_epsilon)
+    def start_training(self,training = True):
+        self.init_taken_action_storage()
+        eps_grad = -(self.num_games-self.epsilon_increase)/np.log(1-self.final_epsilon)
         step = 0
         for episode in range(self.num_games):
             # initial observation, get state space
@@ -82,25 +117,26 @@ class TrainCatan:
                 if env.current_player-1 in self.training_players:
                     buffer_player = env.current_player-1
                     self.action_buffer[buffer_player] = self.RL.choose_action(state_space,possible_actions)
-                    state_space_, self.reward_buffer[buffer_player], possible_actions, self.done_buffer[buffer_player] = env.step(self.action_buffer[buffer_player])
+                    state_space_, self.reward_buffer[buffer_player], possible_actions, self.done_buffer[buffer_player],clabel = env.step(self.action_buffer[buffer_player])
                     if env.current_player-1 != buffer_player: #When player one chooses do Nothing
                         self.state_space_buffer[buffer_player] = state_space
                     else:
-                        if train:
-                            self.RL.store_transition(state_space, self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
+                        #if train:
+                        self.RL.store_transition(state_space, self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
                 else:
                     action = np.random.choice(len(possible_actions), 1, p=possible_actions/sum(possible_actions))[0]
-                    state_space_, r, possible_actions, d = env.step(action)
+                    state_space_, r, possible_actions, d ,clabel= env.step(action)
+
                     if env.current_player-1 in self.training_players:
                         buffer_player = env.current_player-1
-                        if self.state_space_buffer[buffer_player] is not None and self.action_buffer[buffer_player] is not None and train:
+                        if self.state_space_buffer[buffer_player] is not None and self.action_buffer[buffer_player] is not None:# and train:
                             self.RL.store_transition(self.state_space_buffer[buffer_player], self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
 
-
+                self.add_action_to_storage(clabel,env.current_player-1)
 
                 # The game executes the action chosen by RL and gets next state and reward
 
-                if (step > 2000) and (step % 50 == 0) and train:
+                if (step > 2000) and (step % 50 == 0):# and training:
                     self.RL.learn()
 
                 # swap observation
@@ -113,8 +149,9 @@ class TrainCatan:
                     print(self.reward_buffer)
                     print('Game '+ str(episode)+' finished after ' + str(iteration_counter)+' iterations.####################################################')
                     print('Victory Points ' +str(env.get_victory_points())+'\n')
-                    if train :
-                        self.RL.epsilon = 1-np.exp(-episode/eps_grad)
+                    if training :
+                        if episode > self.epsilon_increase:
+                            self.RL.epsilon = 1-np.exp(-(episode-self.epsilon_increase)/eps_grad)
                     print('Epsilon '+str(self.RL.epsilon))
                     self.victories.append(np.argmax(env.get_victory_points()))
                     self.epsilons.append(self.RL.epsilon)
@@ -130,16 +167,16 @@ class TrainCatan:
         plt.show()
         # end of game
         print('Run Finished')
+        self.print_stored_actions()
 
     def play_game(self,position_training_instances = (1,0,0,0),epsilon=1.0):
         if not hasattr(self,'RL'):
             print('No reinforcement learning instance available.')
             return
-        self.init_online_plot()
         self.RL.epsilon = epsilon
         self.training_players = np.where(np.array(position_training_instances)==1)[0]
         print(self.training_players)
-        self.start_training(train=False)
+        self.start_training(training=False)
 
 
     def init_training_environment(self):
@@ -149,7 +186,8 @@ class TrainCatan:
                       reward_decay=self.reward_decay,
                       e_greedy=self.e_greedy,
                       replace_target_iter=self.replace_target_iter,
-                      memory_size=self.memory_size
+                      memory_size=self.memory_size,
+                      softmax_choice=self.softmax_choice
                       )
 
     def init_online_plot(self):
