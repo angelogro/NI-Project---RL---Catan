@@ -171,7 +171,6 @@ class TrainCatan:
 
                     break
 
-        self.RL.save_params("/tmp/1stplayer_3000ep.ckpt")
         plt.show()
         # end of game
         print('Run Finished')
