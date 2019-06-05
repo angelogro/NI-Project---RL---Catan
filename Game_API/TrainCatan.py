@@ -13,12 +13,13 @@ class TrainCatan:
                  learning_rate=0.01,
                  reward_decay=0.99,
                  e_greedy=0,
-                 replace_target_iter=200,
+                 replace_target_iter=20,
                  memory_size=100000,
                  num_games=5000,
                  final_epsilon=0.9,
                  epsilon_increase=0, #since which game the epsilon shall start to increase exponentially
                  softmax_choice= False,
+                 sigmoid_001_009_borders = (1000,9000), #
                  opponents = 'random_sample'):
         self.plot_interval = plot_interval
         self.action_space = action_space
@@ -37,6 +38,9 @@ class TrainCatan:
         self.state_space_buffer=[None,None,None,None]
         self.action_buffer=[None,None,None,None]
         self.reward_buffer=[None,None,None,None]
+
+        self.eps_mid = np.mean(sigmoid_001_009_borders)
+        self.eps_stretch_factor = np.arctanh((0.99-0.5)/0.5)/(sigmoid_001_009_borders[1]-self.eps_mid)
 
 
     def save_hyperparameters(self,filename):
@@ -96,7 +100,7 @@ class TrainCatan:
         step = 0
         for episode in range(self.num_games):
             # initial observation, get state space
-            env = Game(random_init=False,action_space=self.action_space,needed_victory_points=self.needed_victory_points,reward=self.reward)
+            env = Game(random_init=True,action_space=self.action_space,needed_victory_points=self.needed_victory_points,reward=self.reward)
 
             state_space = env.get_state_space()
             possible_actions = env.get_possible_actions(env.current_player)
@@ -118,6 +122,7 @@ class TrainCatan:
                     buffer_player = env.current_player-1
                     self.action_buffer[buffer_player] = self.RL.choose_action(state_space,possible_actions)
                     state_space_, self.reward_buffer[buffer_player], possible_actions, self.done_buffer[buffer_player],clabel = env.step(self.action_buffer[buffer_player])
+                    print(self.action_buffer[buffer_player])
                     if env.current_player-1 != buffer_player: #When player one chooses do Nothing
                         self.state_space_buffer[buffer_player] = state_space
                     else:
@@ -149,17 +154,20 @@ class TrainCatan:
                     print(self.reward_buffer)
                     print('Game '+ str(episode)+' finished after ' + str(iteration_counter)+' iterations.####################################################')
                     print('Victory Points ' +str(env.get_victory_points())+'\n')
+                    print('Cards '+str(np.sum(env.cards,axis=1)))
                     if training :
-                        if episode > self.epsilon_increase:
-                            self.RL.epsilon = 1-np.exp(-(episode-self.epsilon_increase)/eps_grad)
+                        #if episode > self.epsilon_increase:
+                            #self.RL.epsilon = 1-np.exp(-(episode-self.epsilon_increase)/eps_grad)
+                        self.RL.epsilon = np.tanh((episode-self.eps_mid)*self.eps_stretch_factor)*0.5+0.5
                     print('Epsilon '+str(self.RL.epsilon))
+                    self.cards.append(np.argmax(np.sum(env.cards,axis=1)))
                     self.victories.append(np.argmax(env.get_victory_points()))
                     self.epsilons.append(self.RL.epsilon)
                     self.statistics.append(iteration_counter)
 
                     if (len(self.victories)%self.plot_interval==0) and (episode>0):
                         
-                        self.plot_statistics_online(self.victories, self.epsilons,self.plot_interval)
+                        self.plot_statistics_online(self.victories, self.epsilons,self.cards,self.plot_interval)
 
                     break
 
@@ -187,27 +195,34 @@ class TrainCatan:
                       e_greedy=self.e_greedy,
                       replace_target_iter=self.replace_target_iter,
                       memory_size=self.memory_size,
-                      softmax_choice=self.softmax_choice
+                      softmax_choice=self.softmax_choice,
+                               batch_size=256
                       )
 
     def init_online_plot(self):
         self.statistics = []
         self.victories = []
+        self.cards = []
         self.epsilons = []
         plt.figure(2)
-        plt.plot([],[],label='Player 1')
-        plt.plot([],[],label='Player 2')
-        plt.plot([],[],label='Player 3')
-        plt.plot([],[],label='Player 4')
+        plt.plot([],[],label='Player 1 vic')
+        plt.plot([],[],label='Player 2 vic')
+        plt.plot([],[],label='Player 3 vic')
+        plt.plot([],[],label='Player 4 vic')
+        plt.plot([],[],label='Player 1 cards')
+        plt.plot([],[],label='Player 2 cards')
+        plt.plot([],[],label='Player 3 cards')
+        plt.plot([],[],label='Player 4 cards')
         plt.plot([],[],label='Epsilon')
         plt.legend()
         plt.xlabel('Game number')
         plt.ylabel('Winning percentage / Epsilon value')
 
-    def plot_statistics_online(self,victories,epsilons,n_game_average):
+    def plot_statistics_online(self,victories,epsilons,cards,n_game_average):
         start_ind = 0
         end_ind = 0
         avg_vic = []
+        avg_cards = []
         avg_eps = []
         num_games = []
         while True:
@@ -216,22 +231,28 @@ class TrainCatan:
                 end_ind = len(victories)
             num_games.append(end_ind-n_game_average/2)
             vic_extract = np.array(victories[start_ind:end_ind])
+            cards_extract = np.array(cards[start_ind:end_ind])
             eps_extract = epsilons[start_ind:end_ind]
+
             avg_vic.append([sum(np.where(vic_extract==0,1,0))/len(vic_extract),sum(np.where(vic_extract==1,1,0))/len(vic_extract)
                                ,sum(np.where(vic_extract==2,1,0))/len(vic_extract),sum(np.where(vic_extract==3,1,0))/len(vic_extract)])
+            avg_cards.append([sum(np.where(cards_extract==0,1,0))/len(cards_extract),sum(np.where(cards_extract==1,1,0))/len(cards_extract)
+                               ,sum(np.where(cards_extract==2,1,0))/len(cards_extract),sum(np.where(cards_extract==3,1,0))/len(cards_extract)])
             avg_eps.append(np.mean(eps_extract))
             if end_ind == len(victories):
                 break
             start_ind = end_ind
         avg_vic = np.array(avg_vic)
+        avg_cards = np.array(avg_cards)
         for i in range(4):
             plt.gca().lines[i].set_xdata(num_games)
             plt.gca().lines[i].set_ydata(avg_vic[:,i])
-        plt.gca().lines[4].set_xdata(num_games)
-        plt.gca().lines[4].set_ydata(avg_eps)
+            plt.gca().lines[i+4].set_xdata(num_games)
+            plt.gca().lines[i+4].set_ydata(avg_cards[:,i])
+        plt.gca().lines[8].set_xdata(num_games)
+        plt.gca().lines[8].set_ydata(avg_eps)
         plt.gca().relim()
         plt.gca().autoscale_view()
         plt.pause(0.05)
 
-    def save_model(self):
-        pass
+

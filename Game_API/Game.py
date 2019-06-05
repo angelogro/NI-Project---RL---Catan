@@ -141,7 +141,10 @@ class Game:
 				counter+=1
 			else:
 				possible_actions = np.concatenate((possible_actions,function_ref[0](player_num)*1))
-
+		if self.reward == 'cards':
+			if self.action_counter >= 16:
+				possible_actions = np.zeros(len(possible_actions))
+				possible_actions[0] = 1
 		return possible_actions
 
 	def take_action(self,chosen_action_ind,player_num):
@@ -171,6 +174,20 @@ class Game:
 		game_finished = 0
 
 		reward = 0
+		if self.reward == 'cards':
+			finished = False
+			for i in range(5):
+				if self.check_resource_available_on_pile(i) == False:
+					finished = True
+			if finished:
+				max_cards = np.max(np.sum(self.cards,axis=1))
+				if max_cards == np.sum(self.cards,axis=1)[player_num-1]:
+					return 1,1,' '
+				else:
+					return -1,1,' '
+			else:
+				return 0,0,' '
+
 		if np.any(self.get_victory_points() >= self.needed_victory_points):
 			game_finished = 1
 			if np.argmax(self.get_victory_points())==player_num-1: #Player 1
@@ -181,11 +198,13 @@ class Game:
 			pass
 		elif self.reward == 'building':
 			if chosen_action_array_label in ['build_road']:
-				reward += 0.5
+				reward += 0.3
 			elif chosen_action_array_label in ['build_settlement','build_city']:
-				reward += 1
+				reward += 0.6
+			elif chosen_action_array_label in ['trade_4vs1']:
+				reward -= 0.6
 			else:
-				reward -= -0.1
+				reward -= 0.3
 		return reward,game_finished,chosen_action_array_label
 
 
@@ -229,6 +248,8 @@ class Game:
 		number = random.choice(self.dices_results)
 		if number == 7:
 			# This could later be replaced by get_possible_actions_discard_resources, offering some discarding heuristics
+			if self.reward == 'cards':
+				return
 			self.discard_resources()
 
 			# Actually here we have to make sure that the next action taken by the player will be move_robber()

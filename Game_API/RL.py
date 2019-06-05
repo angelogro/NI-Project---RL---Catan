@@ -15,6 +15,7 @@ import pandas as pd
 import tensorflow as tf
 from scipy.special import softmax
 
+MODELFOLDER = './models/'
 
 np.random.seed(1)
 tf.set_random_seed(1)
@@ -71,6 +72,8 @@ class DeepQNetwork:
             tf.summary.FileWriter("logs/", self.sess.graph)
 
         self.sess.run(tf.global_variables_initializer())
+        global_step_tensor = tf.Variable(0,trainable=False,name='global_step')
+        self.sess.run(global_step_tensor.initializer)
         self.cost_his = []
 
     def _build_net(self):
@@ -80,34 +83,34 @@ class DeepQNetwork:
 
         with tf.variable_scope('eval_net'):
             # c_names(collections_names) are the collections to store variables
-            c_names, n_l1, w_initializer, b_initializer = \
-                ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 10, \
-                tf.random_normal_initializer(0., 0.3), tf.constant_initializer(0.1)  # config of layers
+            c_names, n_l1,n_l2, w_initializer, b_initializer = \
+                ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 50,50, \
+                tf.random_normal_initializer(0., 0.1), tf.constant_initializer(0.1)  # config of layers
 
             # first layer. collections is used later when assign to target net
             with tf.variable_scope('l1'):
                 self.w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
                 self.b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
-                self.l1 = tf.nn.relu(tf.matmul(self.s, self.w1) + self.b1)
+                self.l1 = tf.nn.tanh(tf.matmul(self.s, self.w1) + self.b1)
 
             # second layer. collections is used later when assign to target net
             with tf.variable_scope('l2'):
-                self.w2 = tf.get_variable('w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
-                self.b2 = tf.get_variable('b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
-                self.q_eval = tf.matmul(self.l1, self.w2) + self.b2
+                self.w2 = tf.get_variable('w2', [n_l1, n_l2], initializer=w_initializer, collections=c_names)
+                self.b2 = tf.get_variable('b2', [1, n_l2], initializer=b_initializer, collections=c_names)
+                self.l2 = tf.nn.tanh(tf.matmul(self.l1, self.w2) + self.b2)
 
+            # second layer. collections is used later when assign to target net
+            with tf.variable_scope('l3'):
+                self.w3 = tf.get_variable('w3', [n_l2, self.n_actions], initializer=w_initializer, collections=c_names)
+                self.b3 = tf.get_variable('b3', [1, self.n_actions], initializer=b_initializer, collections=c_names)
+                self.q_eval = tf.nn.tanh(tf.matmul(self.l1, self.w3) + self.b3)
 
-        # Merge all the summaries and write them out to /tmp/mnist_logs (by default)
-        merged = tf.summary.merge_all()
-        #self.train_writer = tf.summary.FileWriter(self.summaries_dir + '/train',
-         #                                    self.sess.graph)
-        #test_writer = tf.summary.FileWriter(self.summaries_dir + '/test')
 
         with tf.variable_scope('loss'):
             self.loss = tf.losses.huber_loss(self.q_target, self.q_eval)
 
         with tf.variable_scope('train') as self.train_var:
-            self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
+            self._train_op = tf.train.GradientDescentOptimizer(self.lr).minimize(self.loss)
 
         # ------------------ build target_net ------------------
         self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')    # input
@@ -117,15 +120,21 @@ class DeepQNetwork:
 
             # first layer. collections is used later when assign to target net
             with tf.variable_scope('l1'):
-                w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
-                b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
-                l1 = tf.nn.relu(tf.matmul(self.s_, w1) + b1)
+                self.w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
+                self.b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
+                self.l1 = tf.nn.tanh(tf.matmul(self.s, self.w1) + self.b1)
 
             # second layer. collections is used later when assign to target net
             with tf.variable_scope('l2'):
-                w2 = tf.get_variable('w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
-                b2 = tf.get_variable('b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
-                self.q_next = tf.matmul(l1, w2) + b2
+                self.w2 = tf.get_variable('w2', [n_l1, n_l2], initializer=w_initializer, collections=c_names)
+                self.b2 = tf.get_variable('b2', [1, n_l2], initializer=b_initializer, collections=c_names)
+                self.l2 = tf.nn.tanh(tf.matmul(self.l1, self.w2) + self.b2)
+
+            # second layer. collections is used later when assign to target net
+            with tf.variable_scope('l3'):
+                self.w3 = tf.get_variable('w3', [n_l2, self.n_actions], initializer=w_initializer, collections=c_names)
+                self.b3 = tf.get_variable('b3', [1, self.n_actions], initializer=b_initializer, collections=c_names)
+                self.q_next = tf.nn.tanh(tf.matmul(self.l1, self.w3) + self.b3)
 
     def store_transition(self, s, a, r, s_):
         if not hasattr(self, 'memory_counter'):
@@ -147,10 +156,17 @@ class DeepQNetwork:
         if np.random.uniform() < self.epsilon:
             # forward feed the observation and get q value for every actions
             actions_value = self.sess.run(self.q_eval, feed_dict={self.s: observation}).flatten()
+
             possible_action_indices = np.where(possible_actions==1)[0]
             q_poss = actions_value[possible_action_indices]
+            if self.learn_step_counter % self.replace_target_iter == 0:
+                print('Possible action values: '+str(q_poss))
             if self.softmax_choice:
+
                 q_softmax = softmax(q_poss)
+                if self.learn_step_counter % self.replace_target_iter == 0:
+                    print('Possible action values: '+str(q_poss))
+                    print('Corresponding SOftmax values: '+str(q_softmax))
                 return possible_action_indices[np.random.choice(len(q_softmax),1,p=q_softmax)[0]]
 
             action = possible_action_indices[np.argmax(q_poss)]
@@ -235,4 +251,17 @@ class DeepQNetwork:
             tf.summary.scalar('max', tf.reduce_max(var))
             tf.summary.scalar('min', tf.reduce_min(var))
             tf.summary.histogram('histogram', var)
+
+    def save_current_model(self,model_name):
+        self.saver = tf.train.Saver()
+        self.saver.save(self.sess,MODELFOLDER +model_name)
+
+    def save_model_interval(self,model_name,global_step=1000):
+        self.saver = tf.train.Saver()
+        self.saver.save(self.sess,MODELFOLDER +model_name,global_step=global_step)
+
+    def load_model(self,model_name):
+        self.saver = tf.train.import_meta_graph(MODELFOLDER+model_name)
+        self.saver.restore(self.sess,tf.train.latest_checkpoint(MODELFOLDER+'./'))
+
 
