@@ -13,8 +13,9 @@ gym: 0.7.3
 import numpy as np
 import pandas as pd
 import tensorflow as tf
+from scipy.special import softmax
 
-
+MODELFOLDER = './models/'
 
 np.random.seed(1)
 tf.set_random_seed(1)
@@ -33,9 +34,11 @@ class DeepQNetwork:
             memory_size=500,
             batch_size=32,
             e_greedy_increment=None,
-            output_graph=False,
+            output_graph=True,
+            softmax_choice=False,
     ):
         # Initialize the params passed from run_this file
+        self.summaries_dir = 'Summaries'
         self.n_actions = n_actions
         self.n_features = n_features
         self.lr = tf.Variable(learning_rate, trainable=False,dtype=tf.float64)
@@ -45,16 +48,14 @@ class DeepQNetwork:
         self.memory_size = memory_size
         self.batch_size = batch_size
         self.epsilon_increment = e_greedy_increment
+        self.softmax_choice = softmax_choice
         self.epsilon = 0 if e_greedy_increment is not None else self.epsilon_max
-
-        # total learning step
         self.learn_step_counter = 0
-        self.global_step = tf.Variable(1,name='global_step', trainable=False,dtype=tf.int32)
-
         # initialize zero memory [s, a, r, s_]
         self.memory = np.zeros((self.memory_size, n_features * 2 + 2))
 
         # consist of [target_net, evaluate_net]
+        self.sess = tf.InteractiveSession()
         self._build_net()
         # get_collection return the list of values associated with target_net_params & eval_net_params (refer to  _build_net)
         t_params = tf.get_collection('target_net_params')
@@ -62,9 +63,8 @@ class DeepQNetwork:
 
 
         self.replace_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
-        self.count_up_global_step_op = tf.assign_add(self.global_step,1)
 
-        self.sess = tf.InteractiveSession()
+
 
         if output_graph:
             # $ tensorboard --logdir=logs
@@ -72,6 +72,8 @@ class DeepQNetwork:
             tf.summary.FileWriter("logs/", self.sess.graph)
 
         self.sess.run(tf.global_variables_initializer())
+        global_step_tensor = tf.Variable(0,trainable=False,name='global_step')
+        self.sess.run(global_step_tensor.initializer)
         self.cost_his = []
 
     def _build_net(self):
@@ -81,31 +83,34 @@ class DeepQNetwork:
 
         with tf.variable_scope('eval_net'):
             # c_names(collections_names) are the collections to store variables
-            c_names, n_l1, w_initializer, b_initializer = \
-                ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 10, \
-                tf.random_normal_initializer(0., 0.3), tf.constant_initializer(0.1)  # config of layers
+            c_names, n_l1,n_l2, w_initializer, b_initializer = \
+                ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 50,50, \
+                tf.random_normal_initializer(0., 0.1), tf.constant_initializer(0.1)  # config of layers
 
             # first layer. collections is used later when assign to target net
             with tf.variable_scope('l1'):
-                w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
-                b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
-                l1 = tf.nn.relu(tf.matmul(self.s, w1) + b1)
+                self.w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
+                self.b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
+                self.l1 = tf.nn.tanh(tf.matmul(self.s, self.w1) + self.b1)
 
             # second layer. collections is used later when assign to target net
             with tf.variable_scope('l2'):
-                w2 = tf.get_variable('w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
-                b2 = tf.get_variable('b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
-                self.q_eval = tf.matmul(l1, w2) + b2
+                self.w2 = tf.get_variable('w2', [n_l1, n_l2], initializer=w_initializer, collections=c_names)
+                self.b2 = tf.get_variable('b2', [1, n_l2], initializer=b_initializer, collections=c_names)
+                self.l2 = tf.nn.tanh(tf.matmul(self.l1, self.w2) + self.b2)
+
+            # second layer. collections is used later when assign to target net
+            with tf.variable_scope('l3'):
+                self.w3 = tf.get_variable('w3', [n_l2, self.n_actions], initializer=w_initializer, collections=c_names)
+                self.b3 = tf.get_variable('b3', [1, self.n_actions], initializer=b_initializer, collections=c_names)
+                self.q_eval = tf.nn.tanh(tf.matmul(self.l1, self.w3) + self.b3)
+
 
         with tf.variable_scope('loss'):
-            self.loss = tf.reduce_mean(tf.squared_difference(self.q_target, self.q_eval))
+            self.loss = tf.losses.huber_loss(self.q_target, self.q_eval)
 
-        # Added with the hope to avoid high losses when epsilon increases
-        with tf.variable_scope('decay_lr'):
-            self.decay_lr = tf.train.exponential_decay(self.lr, self.global_step,
-                                                       1, 0.999, staircase=False)
         with tf.variable_scope('train') as self.train_var:
-            self._train_op = tf.train.RMSPropOptimizer(self.lr).minimize(self.loss)
+            self._train_op = tf.train.GradientDescentOptimizer(self.lr).minimize(self.loss)
 
         # ------------------ build target_net ------------------
         self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')    # input
@@ -115,15 +120,21 @@ class DeepQNetwork:
 
             # first layer. collections is used later when assign to target net
             with tf.variable_scope('l1'):
-                w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
-                b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
-                l1 = tf.nn.relu(tf.matmul(self.s_, w1) + b1)
+                self.w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
+                self.b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
+                self.l1 = tf.nn.tanh(tf.matmul(self.s, self.w1) + self.b1)
 
             # second layer. collections is used later when assign to target net
             with tf.variable_scope('l2'):
-                w2 = tf.get_variable('w2', [n_l1, self.n_actions], initializer=w_initializer, collections=c_names)
-                b2 = tf.get_variable('b2', [1, self.n_actions], initializer=b_initializer, collections=c_names)
-                self.q_next = tf.matmul(l1, w2) + b2
+                self.w2 = tf.get_variable('w2', [n_l1, n_l2], initializer=w_initializer, collections=c_names)
+                self.b2 = tf.get_variable('b2', [1, n_l2], initializer=b_initializer, collections=c_names)
+                self.l2 = tf.nn.tanh(tf.matmul(self.l1, self.w2) + self.b2)
+
+            # second layer. collections is used later when assign to target net
+            with tf.variable_scope('l3'):
+                self.w3 = tf.get_variable('w3', [n_l2, self.n_actions], initializer=w_initializer, collections=c_names)
+                self.b3 = tf.get_variable('b3', [1, self.n_actions], initializer=b_initializer, collections=c_names)
+                self.q_next = tf.nn.tanh(tf.matmul(self.l1, self.w3) + self.b3)
 
     def store_transition(self, s, a, r, s_):
         if not hasattr(self, 'memory_counter'):
@@ -147,7 +158,18 @@ class DeepQNetwork:
             actions_value = self.sess.run(self.q_eval, feed_dict={self.s: observation}).flatten()
 
             possible_action_indices = np.where(possible_actions==1)[0]
-            action = possible_action_indices[np.argmax(actions_value[possible_action_indices])]
+            q_poss = actions_value[possible_action_indices]
+            if self.learn_step_counter % self.replace_target_iter == 0:
+                print('Possible action values: '+str(q_poss))
+            if self.softmax_choice:
+
+                q_softmax = softmax(q_poss)
+                if self.learn_step_counter % self.replace_target_iter == 0:
+                    print('Possible action values: '+str(q_poss))
+                    print('Corresponding SOftmax values: '+str(q_softmax))
+                return possible_action_indices[np.random.choice(len(q_softmax),1,p=q_softmax)[0]]
+
+            action = possible_action_indices[np.argmax(q_poss)]
         else:
             action = np.random.choice(np.where(possible_actions==1)[0])
         return action
@@ -184,40 +206,16 @@ class DeepQNetwork:
 
         q_target[batch_index, eval_act_index] = reward + self.gamma * np.max(q_next, axis=1)
 
-        """
-        For example in this batch I have 2 samples and 3 actions:
-        q_eval =
-        [[1, 2, 3],
-         [4, 5, 6]]
-
-        q_target = q_eval =
-        [[1, 2, 3],
-         [4, 5, 6]]
-
-        Then change q_target with the real q_target value w.r.t the q_eval's action.
-        For example in:
-            sample 0, I took action 0, and the max q_target value is -1;
-            sample 1, I took action 2, and the max q_target value is -2:
-        q_target =
-        [[-1, 2, 3],
-         [4, 5, -2]]
-
-        So the (q_target - q_eval) becomes:
-        [[(-1)-(1), 0, 0],
-         [0, 0, (-2)-(6)]]
-
-        We then backpropagate this error w.r.t the corresponding action to network,
-        leave other action as error=0 cause we didn't choose it.
-        """
 
         # train eval network
-        _, self.cost = self.sess.run([self._train_op, self.loss],
+        summary, self.cost = self.sess.run([self._train_op, self.loss],
                                      feed_dict={self.s: batch_memory[:, :self.n_features],
                                                 self.q_target: q_target})
+
         self.cost_his.append(self.cost)
 
         # increasing epsilon
-        self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
+        #self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
 
         self.learn_step_counter += 1
 
@@ -241,11 +239,31 @@ class DeepQNetwork:
             total_parameters += variable_parameters
         return total_parameters
 
-    def trigger_adapt_learning_rate(self):
-        ### Every 20 games
 
-        self.sess.run(self.count_up_global_step_op)
-        pass
+    def variable_summaries(self,var):
+        """Attach a lot of summaries to a Tensor (for TensorBoard visualization)."""
+        with tf.name_scope('summaries'):
+            mean = tf.reduce_mean(var)
+            tf.summary.scalar('mean', mean)
+            with tf.name_scope('stddev'):
+                stddev = tf.sqrt(tf.reduce_mean(tf.square(var - mean)))
+            tf.summary.scalar('stddev', stddev)
+            tf.summary.scalar('max', tf.reduce_max(var))
+            tf.summary.scalar('min', tf.reduce_min(var))
+            tf.summary.histogram('histogram', var)
+
+    def save_current_model(self,model_name):
+        self.saver = tf.train.Saver()
+        self.saver.save(self.sess,MODELFOLDER +model_name)
+
+    def save_model_interval(self,model_name,global_step=1000):
+        self.saver = tf.train.Saver()
+        self.saver.save(self.sess,MODELFOLDER +model_name,global_step=global_step)
+
+    def load_model(self,model_name):
+        self.saver = tf.train.import_meta_graph(MODELFOLDER+model_name)
+        self.saver.restore(self.sess,tf.train.latest_checkpoint(MODELFOLDER+'./'))
+
 
     def save_params(self, modelname):
          self.saver = tf.train.Saver(max_to_keep = 1) 
