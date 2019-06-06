@@ -192,8 +192,7 @@ class Game:
 			game_finished = 1
 			if np.argmax(self.get_victory_points())==player_num-1: #Player 1
 				reward += 1
-			else:
-				reward -= 1
+				
 		if self.reward == 'victory_only':
 			pass
 		elif self.reward == 'building':
@@ -909,7 +908,7 @@ class Game:
 		return self.number_space
 
 	def create_number_space(self):
-		num_prob_dist = np.array([1,2,3,4,5,6,5,4,3,2,1])/36
+		num_prob_dist = np.array([1,2,3,4,5,6,5,4,3,2,1])/4 # 4 instead of 36 in order to have inputs in similar numeric ranges
 		resource,number=zip(*self.tiles.get_tiles())
 
 		self.number_space = num_prob_dist[np.array(number)-2]
@@ -958,7 +957,7 @@ class Game:
 		card_state = self.cards.copy()
 		if not self.current_player == 1:
 			card_state[[0, self.current_player-1]] = card_state[[self.current_player-1, 0]]
-		return np.ravel(card_state)
+		return np.ravel(card_state)/4 # divided by 4 in order to have inputs in similar ranges
 
 
 

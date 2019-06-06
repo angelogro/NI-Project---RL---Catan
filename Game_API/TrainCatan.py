@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 from xml import etree
 import os
 import pickle
+import datetime
 
 class TrainCatan:
 
@@ -19,12 +20,17 @@ class TrainCatan:
                  final_epsilon=0.9,
                  epsilon_increase=0, #since which game the epsilon shall start to increase exponentially
                  softmax_choice= False,
-                 sigmoid_001_009_borders = (1000,9000), #
-                 opponents = 'random_sample'):
+                 sigmoid_001_009_borders = (1000,9000), #epsilon sigmoid function
+                 opponents = 'random_sample',
+                 autosave = False,
+                 random_shuffle_training_players = False, # Shall the training player positions be randomized?
+                 random_init = False # Shall the game board be randomly initialized?
+                 ):
         self.plot_interval = plot_interval
         self.action_space = action_space
 
         self.position_training_instances = position_training_instances
+        self.random_shuffle_training_players_ = random_shuffle_training_players
         self.needed_victory_points,self.reward = needed_victory_points,reward
         self.learning_rate,self.reward_decay,self.e_greedy,self.replace_target_iter,self.memory_size = learning_rate,reward_decay,e_greedy,replace_target_iter,memory_size
         self.num_games = num_games
@@ -41,7 +47,9 @@ class TrainCatan:
 
         self.eps_mid = np.mean(sigmoid_001_009_borders)
         self.eps_stretch_factor = np.arctanh((0.99-0.5)/0.5)/(sigmoid_001_009_borders[1]-self.eps_mid)
-
+        self.autosave = autosave
+        
+        self.random_init = random_init
 
     def save_hyperparameters(self,filename):
         del(self.RL)
@@ -93,22 +101,30 @@ class TrainCatan:
         print('BuildRoad: '+str(self.buildroad))
         print('BuildSettlement: '+str(self.buildsettlement))
         print('BuildCity: '+str(self.buildcity))
-
+    
+    def random_shuffle_training_players(self):
+        # Returns the binary representation of the training players
+        rand_num = np.random.randint(15)+1
+        return np.where(np.unpackbits(np.array(rand_num, dtype=np.uint8))[-4:]==1)[0]
+         
+    
     def start_training(self,training = True):
         self.init_taken_action_storage()
         eps_grad = -(self.num_games-self.epsilon_increase)/np.log(1-self.final_epsilon)
         step = 0
         for episode in range(self.num_games):
             # initial observation, get state space
-            env = Game(random_init=True,action_space=self.action_space,needed_victory_points=self.needed_victory_points,reward=self.reward)
-
+            if self.random_shuffle_training_players_:
+                self.training_players=self.random_shuffle_training_players()
+            env = Game(random_init=self.random_init,action_space=self.action_space,needed_victory_points=self.needed_victory_points,reward=self.reward)
+            
             state_space = env.get_state_space()
             possible_actions = env.get_possible_actions(env.current_player)
-
+            
             iteration_counter = 0
             self.state_space_buffer=[None,None,None,None]
             self.action_buffer=[None,None,None,None]
-            self.reward_buffer=[None,None,None,None]
+            self.reward_buffer=[0,0,0,0]
             self.done_buffer=[None,None,None,None]
             
             done = 0
@@ -122,7 +138,7 @@ class TrainCatan:
                     buffer_player = env.current_player-1
                     self.action_buffer[buffer_player] = self.RL.choose_action(state_space,possible_actions)
                     state_space_, self.reward_buffer[buffer_player], possible_actions, self.done_buffer[buffer_player],clabel = env.step(self.action_buffer[buffer_player])
-                    print(self.action_buffer[buffer_player])
+                    #print(self.action_buffer[buffer_player])
                     if env.current_player-1 != buffer_player: #When player one chooses do Nothing
                         self.state_space_buffer[buffer_player] = state_space
                     else:
@@ -153,21 +169,22 @@ class TrainCatan:
                 if np.all(np.array(self.done_buffer)[self.training_players]==1):
                     print(self.reward_buffer)
                     print('Game '+ str(episode)+' finished after ' + str(iteration_counter)+' iterations.####################################################')
-                    print('Victory Points ' +str(env.get_victory_points())+'\n')
+                    print('Victory Points ' +str(env.get_victory_points()))
                     print('Cards '+str(np.sum(env.cards,axis=1)))
                     if training :
                         #if episode > self.epsilon_increase:
                             #self.RL.epsilon = 1-np.exp(-(episode-self.epsilon_increase)/eps_grad)
                         self.RL.epsilon = np.tanh((episode-self.eps_mid)*self.eps_stretch_factor)*0.5+0.5
-                    print('Epsilon '+str(self.RL.epsilon))
+                    print('Epsilon '+str(self.RL.epsilon)+'\n')
                     self.cards.append(np.argmax(np.sum(env.cards,axis=1)))
                     self.victories.append(np.argmax(env.get_victory_points()))
+                    self.one_of_training_instances_wins.append(np.sum(np.array(self.reward_buffer))/len(self.training_players))
                     self.epsilons.append(self.RL.epsilon)
                     self.statistics.append(iteration_counter)
 
                     if (len(self.victories)%self.plot_interval==0) and (episode>0):
                         
-                        self.plot_statistics_online(self.victories, self.epsilons,self.cards,self.plot_interval)
+                        self.plot_statistics_online(self.victories, self.epsilons,self.cards,self.one_of_training_instances_wins,self.plot_interval)
 
                     break
 
@@ -201,6 +218,7 @@ class TrainCatan:
     def init_online_plot(self):
         self.statistics = []
         self.victories = []
+        self.one_of_training_instances_wins = []
         self.cards = []
         self.epsilons = []
         plt.figure(2)
@@ -213,16 +231,18 @@ class TrainCatan:
         plt.plot([],[],label='Player 3 cards')
         plt.plot([],[],label='Player 4 cards')
         plt.plot([],[],label='Epsilon')
+        plt.plot([],[],label='Average Win Rate')
         plt.legend()
         plt.xlabel('Game number')
         plt.ylabel('Winning percentage / Epsilon value')
 
-    def plot_statistics_online(self,victories,epsilons,cards,n_game_average):
+    def plot_statistics_online(self,victories,epsilons,cards,win_rate,n_game_average):
         start_ind = 0
         end_ind = 0
         avg_vic = []
         avg_cards = []
         avg_eps = []
+        avg_win_rate = []
         num_games = []
         while True:
             end_ind += n_game_average
@@ -232,16 +252,25 @@ class TrainCatan:
             vic_extract = np.array(victories[start_ind:end_ind])
             cards_extract = np.array(cards[start_ind:end_ind])
             eps_extract = epsilons[start_ind:end_ind]
+            win_rate_extract = win_rate[start_ind:end_ind]
 
             avg_vic.append([sum(np.where(vic_extract==0,1,0))/len(vic_extract),sum(np.where(vic_extract==1,1,0))/len(vic_extract)
                                ,sum(np.where(vic_extract==2,1,0))/len(vic_extract),sum(np.where(vic_extract==3,1,0))/len(vic_extract)])
             avg_cards.append([sum(np.where(cards_extract==0,1,0))/len(cards_extract),sum(np.where(cards_extract==1,1,0))/len(cards_extract)
                                ,sum(np.where(cards_extract==2,1,0))/len(cards_extract),sum(np.where(cards_extract==3,1,0))/len(cards_extract)])
             avg_eps.append(np.mean(eps_extract))
+            
+            avg_win_rate.append(np.mean(win_rate_extract))
             if end_ind == len(victories):
                 break
             start_ind = end_ind
         avg_vic = np.array(avg_vic)
+        
+        if self.autosave:
+            if avg_win_rate[-1] > np.max(avg_win_rate):
+            #if np.sum(avg_vic[-1,self.training_players]) == np.max(np.sum(avg_vic[:,self.training_players],axis=1)):
+                self.RL.save_current_model(str(datetime.date.today()))
+        
         avg_cards = np.array(avg_cards)
         for i in range(4):
             plt.gca().lines[i].set_xdata(num_games)
@@ -250,6 +279,8 @@ class TrainCatan:
             plt.gca().lines[i+4].set_ydata(avg_cards[:,i])
         plt.gca().lines[8].set_xdata(num_games)
         plt.gca().lines[8].set_ydata(avg_eps)
+        plt.gca().lines[9].set_xdata(num_games)
+        plt.gca().lines[9].set_ydata(avg_win_rate)
         plt.gca().relim()
         plt.gca().autoscale_view()
         plt.pause(0.05)

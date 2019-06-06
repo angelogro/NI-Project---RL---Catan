@@ -14,8 +14,9 @@ import numpy as np
 import pandas as pd
 import tensorflow as tf
 from scipy.special import softmax
+import os
 
-MODELFOLDER = './models/'
+MODELFOLDER = '/models/'
 
 np.random.seed(1)
 tf.set_random_seed(1)
@@ -254,15 +255,15 @@ class DeepQNetwork:
 
     def save_current_model(self,model_name):
         self.saver = tf.train.Saver()
-        self.saver.save(self.sess,MODELFOLDER +model_name)
+        self.saver.save(self.sess,os.getcwd()+MODELFOLDER +model_name)
 
     def save_model_interval(self,model_name,global_step=1000):
         self.saver = tf.train.Saver()
-        self.saver.save(self.sess,MODELFOLDER +model_name,global_step=global_step)
+        self.saver.save(self.sess,os.getcwd()+MODELFOLDER +model_name,global_step=global_step)
 
     def load_model(self,model_name):
-        self.saver = tf.train.import_meta_graph(MODELFOLDER+model_name)
-        self.saver.restore(self.sess,tf.train.latest_checkpoint(MODELFOLDER+'./'))
+        self.saver = tf.train.import_meta_graph(os.getcwd()+MODELFOLDER+model_name)
+        self.saver.restore(self.sess,tf.train.latest_checkpoint(os.getcwd()+MODELFOLDER+'./'))
 
 
 
