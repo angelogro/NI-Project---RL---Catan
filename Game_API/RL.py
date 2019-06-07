@@ -11,7 +11,7 @@ gym: 0.7.3
 """
 
 import numpy as np
-import pandas as pd
+
 import tensorflow as tf
 from scipy.special import softmax
 import os
@@ -160,8 +160,8 @@ class DeepQNetwork:
 
             possible_action_indices = np.where(possible_actions==1)[0]
             q_poss = actions_value[possible_action_indices]
-            if self.learn_step_counter % self.replace_target_iter == 0:
-                print('Possible action values: '+str(q_poss))
+            #if self.learn_step_counter % self.replace_target_iter == 0:
+            # print('Possible action values: '+str(q_poss))
             if self.softmax_choice:
 
                 q_softmax = softmax(q_poss)

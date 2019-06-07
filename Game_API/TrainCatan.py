@@ -2,7 +2,7 @@ from Game import Game
 from RL import DeepQNetwork
 import numpy as np
 from matplotlib import pyplot as plt
-from xml import etree
+
 import os
 import pickle
 import datetime
@@ -12,6 +12,8 @@ class TrainCatan:
     def __init__(self,plot_interval=100,action_space='buildings_only',position_training_instances = (1,0,0,0),
                  needed_victory_points = 5,reward = 'building',
                  learning_rate=0.01,
+                 learning_rate_decay_factor = 0.01,
+                 learning_rate_start_decay = 4000,
                  reward_decay=0.99,
                  e_greedy=0,
                  replace_target_iter=20,
@@ -24,21 +26,24 @@ class TrainCatan:
                  opponents = 'random_sample',
                  autosave = False,
                  random_shuffle_training_players = False, # Shall the training player positions be randomized?
-                 random_init = False # Shall the game board be randomly initialized?
+                 random_init = False,# Shall the game board be randomly initialized?
+                 show_cards_statistic = False
                  ):
         self.plot_interval = plot_interval
+        self.plot_counter = 1
+        self.show_cards_statistics = show_cards_statistic
         self.action_space = action_space
 
         self.position_training_instances = position_training_instances
         self.random_shuffle_training_players_ = random_shuffle_training_players
         self.needed_victory_points,self.reward = needed_victory_points,reward
-        self.learning_rate,self.reward_decay,self.e_greedy,self.replace_target_iter,self.memory_size = learning_rate,reward_decay,e_greedy,replace_target_iter,memory_size
+        self.learning_rate,self.learning_rate_decay_factor,self.learning_rate_start_decay=learning_rate,learning_rate_decay_factor,learning_rate_start_decay
+        self.reward_decay,self.e_greedy,self.replace_target_iter,self.memory_size = reward_decay,e_greedy,replace_target_iter,memory_size
         self.num_games = num_games
         self.final_epsilon = final_epsilon
         self.epsilon_increase = epsilon_increase
         self.softmax_choice = softmax_choice
 
-        self.init_online_plot()
         self.init_training_environment()
         self.training_players = np.where(np.array(position_training_instances)==1)[0]
         self.state_space_buffer=[None,None,None,None]
@@ -50,6 +55,8 @@ class TrainCatan:
         self.autosave = autosave
         
         self.random_init = random_init
+
+
 
     def save_hyperparameters(self,filename):
         del(self.RL)
@@ -110,7 +117,7 @@ class TrainCatan:
     
     def start_training(self,training = True):
         self.init_taken_action_storage()
-        eps_grad = -(self.num_games-self.epsilon_increase)/np.log(1-self.final_epsilon)
+        self.init_online_plot()
         step = 0
         for episode in range(self.num_games):
             # initial observation, get state space
@@ -172,19 +179,19 @@ class TrainCatan:
                     print('Victory Points ' +str(env.get_victory_points()))
                     print('Cards '+str(np.sum(env.cards,axis=1)))
                     if training :
-                        #if episode > self.epsilon_increase:
-                            #self.RL.epsilon = 1-np.exp(-(episode-self.epsilon_increase)/eps_grad)
                         self.RL.epsilon = np.tanh((episode-self.eps_mid)*self.eps_stretch_factor)*0.5+0.5
+                        self.RL.lr = self.learning_rate_decay(episode)
                     print('Epsilon '+str(self.RL.epsilon)+'\n')
                     self.cards.append(np.argmax(np.sum(env.cards,axis=1)))
                     self.victories.append(np.argmax(env.get_victory_points()))
                     self.one_of_training_instances_wins.append(np.sum(np.array(self.reward_buffer))/len(self.training_players))
                     self.epsilons.append(self.RL.epsilon)
+                    self.learning_rates.append(self.RL.lr)
                     self.statistics.append(iteration_counter)
 
                     if (len(self.victories)%self.plot_interval==0) and (episode>0):
                         
-                        self.plot_statistics_online(self.victories, self.epsilons,self.cards,self.one_of_training_instances_wins,self.plot_interval)
+                        self.plot_statistics_online(self.victories, self.epsilons,self.cards,self.one_of_training_instances_wins,self.learning_rates,self.plot_interval)
 
                     break
 
@@ -221,28 +228,33 @@ class TrainCatan:
         self.one_of_training_instances_wins = []
         self.cards = []
         self.epsilons = []
-        plt.figure(2)
+        self.learning_rates = []
+        plt.figure(self.plot_counter)
+        self.plot_counter += 1
         plt.plot([],[],label='Player 1 vic')
         plt.plot([],[],label='Player 2 vic')
         plt.plot([],[],label='Player 3 vic')
         plt.plot([],[],label='Player 4 vic')
-        plt.plot([],[],label='Player 1 cards')
-        plt.plot([],[],label='Player 2 cards')
-        plt.plot([],[],label='Player 3 cards')
-        plt.plot([],[],label='Player 4 cards')
+        if self.show_cards_statistics:
+            plt.plot([],[],label='Player 1 cards')
+            plt.plot([],[],label='Player 2 cards')
+            plt.plot([],[],label='Player 3 cards')
+            plt.plot([],[],label='Player 4 cards')
         plt.plot([],[],label='Epsilon')
         plt.plot([],[],label='Average Win Rate')
+        plt.plot([],[],label='Learning Rate')
         plt.legend()
         plt.xlabel('Game number')
         plt.ylabel('Winning percentage / Epsilon value')
 
-    def plot_statistics_online(self,victories,epsilons,cards,win_rate,n_game_average):
+    def plot_statistics_online(self,victories,epsilons,cards,win_rate,learning_rate,n_game_average):
         start_ind = 0
         end_ind = 0
         avg_vic = []
         avg_cards = []
         avg_eps = []
         avg_win_rate = []
+        avg_lr = []
         num_games = []
         while True:
             end_ind += n_game_average
@@ -253,6 +265,7 @@ class TrainCatan:
             cards_extract = np.array(cards[start_ind:end_ind])
             eps_extract = epsilons[start_ind:end_ind]
             win_rate_extract = win_rate[start_ind:end_ind]
+            lr_extract = learning_rate[start_ind:end_ind]
 
             avg_vic.append([sum(np.where(vic_extract==0,1,0))/len(vic_extract),sum(np.where(vic_extract==1,1,0))/len(vic_extract)
                                ,sum(np.where(vic_extract==2,1,0))/len(vic_extract),sum(np.where(vic_extract==3,1,0))/len(vic_extract)])
@@ -261,6 +274,7 @@ class TrainCatan:
             avg_eps.append(np.mean(eps_extract))
             
             avg_win_rate.append(np.mean(win_rate_extract))
+            avg_lr.append(np.mean(lr_extract))
             if end_ind == len(victories):
                 break
             start_ind = end_ind
@@ -275,14 +289,23 @@ class TrainCatan:
         for i in range(4):
             plt.gca().lines[i].set_xdata(num_games)
             plt.gca().lines[i].set_ydata(avg_vic[:,i])
-            plt.gca().lines[i+4].set_xdata(num_games)
-            plt.gca().lines[i+4].set_ydata(avg_cards[:,i])
-        plt.gca().lines[8].set_xdata(num_games)
-        plt.gca().lines[8].set_ydata(avg_eps)
-        plt.gca().lines[9].set_xdata(num_games)
-        plt.gca().lines[9].set_ydata(avg_win_rate)
+        if self.show_cards_statistics:
+            for i in range(4):
+                plt.gca().lines[i+4].set_xdata(num_games)
+                plt.gca().lines[i+4].set_ydata(avg_cards[:,i])
+        plt.gca().lines[4+self.show_cards_statistics*4].set_xdata(num_games)
+        plt.gca().lines[4+self.show_cards_statistics*4].set_ydata(avg_eps)
+        plt.gca().lines[5+self.show_cards_statistics*4].set_xdata(num_games)
+        plt.gca().lines[5+self.show_cards_statistics*4].set_ydata(avg_win_rate)
+        plt.gca().lines[6+self.show_cards_statistics*4].set_xdata(num_games)
+        plt.gca().lines[6+self.show_cards_statistics*4].set_ydata(avg_lr)
         plt.gca().relim()
         plt.gca().autoscale_view()
         plt.pause(0.05)
 
+    def learning_rate_decay(self,episode):
+        if episode < self.learning_rate_start_decay:
+            return self.learning_rate
+        self.learning_rate*=self.learning_rate_decay_factor
+        return self.learning_rate
 

@@ -3,7 +3,7 @@
 import random
 import itertools
 import numpy as np
-from scipy.sparse import coo_matrix
+
 from Roads import Roads
 from Crossings import Crossings
 from HexTiles import HexTiles
