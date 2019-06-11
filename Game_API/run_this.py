@@ -8,10 +8,7 @@ import os
 
 train = None
 if __name__ == "__main__":
-    file2 = open(r"MyFile2.txt","w+")
-    file2.write("testy bla")
-    file2.close()
-    """
+
     train = TrainCatan(num_games=10000,final_epsilon=0.9,needed_victory_points=3,reward='victory_only',
                        action_space='buildings_only',position_training_instances=(1,0,0,0),epsilon_increase=1000,
                        softmax_choice=False,learning_rate=1,memory_size=50000,sigmoid_001_009_borders=(-1000,5000),
@@ -20,7 +17,7 @@ if __name__ == "__main__":
     train.start_training()
     train.autosave = False
     train.random_shuffle_training_players_ = False
-    """
+
     #print(train.RL.b1.eval())
     #print(train.RL.w2.eval())
     #train.num_games = 500
