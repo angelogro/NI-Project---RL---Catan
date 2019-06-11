@@ -22,11 +22,11 @@ pip install datetime
 
 sudo apt install git -y
 
-sudo git clone https://github.com/angelogro/NI-Project---RL---Catan.git
+sudo git clone -b TestingWithMultiplePlayerTraining --single-branch https://github.com/angelogro/NI-Project---RL---Catan.git
 
 cd NI-Project---RL---Catan/Game_API/
 
-python run_this.py
+sudo python run_this.py
 
 
 
