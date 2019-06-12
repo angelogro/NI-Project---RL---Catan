@@ -2,9 +2,8 @@
 # coding: utf-8
 
 from TrainCatan import TrainCatan
-import os
 import sys
-from DistributedTraining import DistributedTraining
+
 
 # -----TO DO -------- Loop over for 4 players
 
