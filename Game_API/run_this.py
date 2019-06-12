@@ -11,7 +11,7 @@ from DistributedTraining import DistributedTraining
 train = None
 d = None
 if __name__ == "__main__":
-    d = DistributedTraining({'plot_interval':[10]})
+    d = DistributedTraining({'position_training_instances':[(1,0,0,0),(0,0,0,1)]})
     d.start_instances()
     """
     print(sys.argv)

@@ -25,7 +25,7 @@ class TrainCatan:
                  sigmoid_001_009_borders = (-1000,5000), #epsilon sigmoid function
                  opponents = 'random_sample',
                  autosave = True,
-                 random_shuffle_training_players = True, # Shall the training player positions be randomized?
+                 random_shuffle_training_players = False, # Shall the training player positions be randomized?
                  random_init = False,# Shall the game board be randomly initialized?
                  show_cards_statistic = False
                  ):
@@ -141,8 +141,10 @@ class TrainCatan:
 
                 iteration_counter += 1
                 # RL choose action based on state
+
                 if env.current_player-1 in self.training_players:
                     buffer_player = env.current_player-1
+
                     self.action_buffer[buffer_player] = self.RL.choose_action(state_space,possible_actions)
                     state_space_, self.reward_buffer[buffer_player], possible_actions, self.done_buffer[buffer_player],clabel = env.step(self.action_buffer[buffer_player])
                     #print(self.action_buffer[buffer_player])
@@ -281,10 +283,7 @@ class TrainCatan:
         avg_vic = np.array(avg_vic)
         
         if self.autosave:
-            if avg_win_rate[-1] > np.max(avg_win_rate):
-            #if np.sum(avg_vic[-1,self.training_players]) == np.max(np.sum(avg_vic[:,self.training_players],axis=1)):
-                f = open('test_file'+str(end_ind),'w+')
-                f.write('testing')
+            if avg_win_rate[-1] >= np.max(avg_win_rate):
                 self.RL.save_current_model(str(datetime.date.today()))
         
         avg_cards = np.array(avg_cards)
