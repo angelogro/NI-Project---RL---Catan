@@ -11,14 +11,28 @@ def pairwise(it):
     while True:
         yield next(it), next(it)
 
+def isfloat(value):
+    try:
+        float(value)
+        return True
+    except ValueError:
+        return False
+
+def isint(value):
+    try:
+        int(value)
+        return True
+    except ValueError:
+        return False
+
 if __name__ == "__main__":
 
     train = TrainCatan()
 
     for param,param_value in pairwise(sys.argv[1:]): #first argument is executed file
-        if isinstance(param_value,int):
+        if isint(param_value):
             setattr(train,param,int(param_value))
-        elif isinstance(param_value,float):
+        elif isfloat(param_value):
             setattr(train,param,float(param_value))
         else:
             setattr(train,param,param_value)
