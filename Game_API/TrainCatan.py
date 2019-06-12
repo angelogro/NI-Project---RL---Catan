@@ -10,22 +10,22 @@ import datetime
 class TrainCatan:
 
     def __init__(self,plot_interval=100,action_space='buildings_only',position_training_instances = (1,0,0,0),
-                 needed_victory_points = 5,reward = 'building',
-                 learning_rate=0.01,
-                 learning_rate_decay_factor = 0.01,
+                 needed_victory_points = 3,reward = 'victory_only',
+                 learning_rate=1,
+                 learning_rate_decay_factor = 0.999,
                  learning_rate_start_decay = 4000,
-                 reward_decay=0.99,
+                 reward_decay=0.95,
                  e_greedy=0,
                  replace_target_iter=20,
-                 memory_size=100000,
-                 num_games=2000,
+                 memory_size=50000,
+                 num_games=100000,
                  final_epsilon=0.9,
-                 epsilon_increase=0, #since which game the epsilon shall start to increase exponentially
+                 epsilon_increase=1000, #since which game the epsilon shall start to increase exponentially
                  softmax_choice= False,
-                 sigmoid_001_009_borders = (1000,9000), #epsilon sigmoid function
+                 sigmoid_001_009_borders = (-1000,5000), #epsilon sigmoid function
                  opponents = 'random_sample',
-                 autosave = False,
-                 random_shuffle_training_players = False, # Shall the training player positions be randomized?
+                 autosave = True,
+                 random_shuffle_training_players = True, # Shall the training player positions be randomized?
                  random_init = False,# Shall the game board be randomly initialized?
                  show_cards_statistic = False
                  ):
@@ -283,6 +283,8 @@ class TrainCatan:
         if self.autosave:
             if avg_win_rate[-1] > np.max(avg_win_rate):
             #if np.sum(avg_vic[-1,self.training_players]) == np.max(np.sum(avg_vic[:,self.training_players],axis=1)):
+                f = open('test_file'+str(end_ind),'w+')
+                f.write('testing')
                 self.RL.save_current_model(str(datetime.date.today()))
         
         avg_cards = np.array(avg_cards)
