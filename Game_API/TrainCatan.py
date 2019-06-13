@@ -57,7 +57,6 @@ class TrainCatan:
         self.random_init = random_init
 
 
-
     def save_hyperparameters(self,filename):
         del(self.RL)
         if not os.path.exists('hyperparameters'):
@@ -68,7 +67,7 @@ class TrainCatan:
         pickle.dump(self, f, pickle.HIGHEST_PROTOCOL)
         f.close()
 
-    @staticmethod
+
     def load_hyperparameters(self,filename):
         if not os.path.exists('hyperparameters/'+filename):
             return

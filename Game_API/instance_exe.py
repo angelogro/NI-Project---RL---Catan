@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     train = TrainCatan()
 
-    for param,param_value in pairwise(sys.argv[1:]): #first argument is executed file
+    for param,param_value in pairwise(sys.argv[2:]): #first argument is executed file,second argument is instance name
         if isint(param_value):
             setattr(train,param,int(param_value))
         elif isfloat(param_value):
@@ -38,5 +38,7 @@ if __name__ == "__main__":
             setattr(train,param,param_value)
 
     train.start_training()
+
+    train.save_hyperparameters(sys.argv[1])
 
 
