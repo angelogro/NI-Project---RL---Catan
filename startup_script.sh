@@ -38,4 +38,4 @@ sudo chmod -R 777 *
 cd NI-Project---RL---Catan/Game_API/
 
 
-sudo python3 instance_exe.py plot_interval 10
+sudo python3 instance_exe.py learningrates6 learning_rate 0.005

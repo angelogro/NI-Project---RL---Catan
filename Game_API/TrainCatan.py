@@ -18,7 +18,7 @@ class TrainCatan:
                  e_greedy=0,
                  replace_target_iter=20,
                  memory_size=50000,
-                 num_games=100000,
+                 num_games=10000,
                  final_epsilon=0.9,
                  epsilon_increase=1000, #since which game the epsilon shall start to increase exponentially
                  softmax_choice= False,
@@ -30,7 +30,6 @@ class TrainCatan:
                  show_cards_statistic = False
                  ):
         self.plot_interval = plot_interval
-        self.plot_counter = 1
         self.show_cards_statistics = show_cards_statistic
         self.action_space = action_space
 
@@ -55,6 +54,12 @@ class TrainCatan:
         self.autosave = autosave
         
         self.random_init = random_init
+        self.statistics = []
+        self.victories = []
+        self.one_of_training_instances_wins = []
+        self.cards = []
+        self.epsilons = []
+        self.learning_rates = []
 
 
     def save_hyperparameters(self,filename):
@@ -223,15 +228,10 @@ class TrainCatan:
                                batch_size=256
                       )
 
-    def init_online_plot(self):
-        self.statistics = []
-        self.victories = []
-        self.one_of_training_instances_wins = []
-        self.cards = []
-        self.epsilons = []
-        self.learning_rates = []
-        plt.figure(self.plot_counter)
-        self.plot_counter += 1
+    def init_online_plot(self,title='Figure',plot_counter = 0):
+
+        plt.figure(plot_counter)
+        plt.title(title)
         plt.plot([],[],label='Player 1 vic')
         plt.plot([],[],label='Player 2 vic')
         plt.plot([],[],label='Player 3 vic')
