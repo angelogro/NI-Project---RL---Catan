@@ -1,15 +1,35 @@
-import argparse
 import os
 import time
 
 import googleapiclient.discovery
-from six.moves import input
+
+"""
+Source code for creation and deletion of gcloud instances.
+
+Most parts of the source code is taken from
+https://github.com/GoogleCloudPlatform/python-docs-samples/blob/master/compute/api/create_instance.py
+
+For explanations see
+https://cloud.google.com/compute/docs/tutorials/python-guide
+
+
+"""
 
 class GcloudInstance():
-    def __init__(self,instance_name,params):
+    """
+    Please change the project_id, bucket and default zone to items corresponding to your gcloud account.
+
+
+    """
+
+    def __init__(self,instance_name,params,zone = 'europe-west1-b'):
         self.instance_name = instance_name
         self.params = params
-        pass
+
+        self.project_id = 'settlers'    #   HAS TO BE ADAPTED TO THE GCLOUD ACCOUNT
+        self.bucket = 'settlers'        #   HAS TO BE ADAPTED TO THE GCLOUD ACCOUNT
+        self.zone = zone                #   HAS TO BE ADAPTED TO THE GCLOUD ACCOUNT
+
 
     # [START list_instances]
     def list_instances(self,compute, project, zone):
@@ -123,8 +143,8 @@ class GcloudInstance():
 
     def start_instance(self):
         compute = googleapiclient.discovery.build('compute', 'v1')
-        operation = self.create_instance(compute, 'settlers', 'europe-west1-b', self.instance_name, 'settlers')
+        operation = self.create_instance(compute, self.project_id, self.zone, self.instance_name, self.bucket)
 
     def remove_instance(self):
         compute = googleapiclient.discovery.build('compute', 'v1')
-        operation = self.delete_instance(compute, 'settlers', 'europe-west1-b', self.instance_name)
+        operation = self.delete_instance(compute, self.project_id, self.zone, self.instance_name)

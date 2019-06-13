@@ -9,8 +9,28 @@ import pickle
 from shutil import copyfile
 
 INSTANCES_FOLDER = 'instance_parameters'
+GCLOUDEXECUTABLE = '/home/angelo/Downloads/google-cloud-sdk/bin/gcloud'
 
+ZONES = ('europe-west1-b',#'europe-west1-c','europe-west1-d',
+         'europe-west2-a',#'europe-west2-b','europe-west2-c',
+         'europe-west3-a',#'europe-west3-b','europe-west3-c',
+         'europe-west4-a',#'europe-west4-b','europe-west4-c',
+         'europe-west6-a'#'europe-west6-b','europe-west6-c')
+         )
 class DistributedTraining():
+    """Class for distributing the training on several gcloud instances.
+
+    Initializes and creates an amount of gcloud instances corresponding to the
+    product of the length of the lists (values) of all keys in param_dic.
+    E.g. param_dic = {'x':[1,2,3],'y':['a','b','c'],z:[4,5]} would result in
+    3 x 3 x 2 = 36 instances.
+
+    Attributes:
+        instances_name_base (str): Name of the instances in the gcloud environment.
+        param_dic (dict(str,str)): Contains arguments of the TrainCatan Class as key
+                                   and a list of values this argument shall be set as value.
+
+    """
 
     def __init__(self,instances_name_base,param_dic):
 
@@ -26,25 +46,36 @@ class DistributedTraining():
 
         list_combinations = [dict(zip(param_dic, v)) for v in product(*param_dic.values())]
         counter = 0
+        zone_counter = 0
         for param_combination in list_combinations:
 
             instance_name = instances_name_base+str(counter)
             self.create_startup_script(instance_name,param_combination)
-            self.g_cloud_instances.append(GcloudInstance(instance_name,param_combination))
+            self.g_cloud_instances.append(GcloudInstance(instance_name,param_combination,ZONES[zone_counter]))
             self.g_cloud_instances[-1].start_instance()
             counter+=1
+            if counter%8 == 0:
+                zone_counter += 1
 
         self.outstanding_instance_files = [instance.instance_name for instance in self.g_cloud_instances]
 
-    def start_instances(self):
-        for instance in self.g_cloud_instances:
-            instance.start_instance()
-
     def delete_instances(self):
+        """Deletes all gcloud instances created on initialization of a DistributedTraining instance.
+        """
         for instance in self.g_cloud_instances:
             instance.remove_instance()
 
     def create_startup_script(self,instance_name,param_combination):
+        """Appends command line arguments to the startup script.
+
+        The following command line arguments will be parsed tot he startup-script-template.
+
+        instance_name param_name1 param_value1 param_name2 param_value2 ...
+
+        Args:
+            instance_name: The complete name given to the instance
+            param_combination: The combination of parameters passed to this specific instance
+        """
         param_value_string = ''.join([' ',instance_name])
         for param in param_combination:
             param_value_string = ''.join([param_value_string,' ',param,' '])
@@ -80,9 +111,9 @@ class DistributedTraining():
             for instance in self.g_cloud_instances:
 
                 if instance.instance_name in self.outstanding_instance_files:
-                    return_value = subprocess.call(["gcloud", "compute" ,"scp","--zone","europe-west1-b", ''.join([instance.instance_name,':/catan/NI-Project---RL---Catan/Game_API/hyperparameters/',instance.instance_name,'/',instance.instance_name])
+                    return_value = subprocess.call(["gcloud", "compute" ,"scp","--zone",instance.zone, ''.join([instance.instance_name,':/catan/NI-Project---RL---Catan/Game_API/hyperparameters/',instance.instance_name,'/',instance.instance_name])
                                             ,os.path.join(os.path.dirname(os.path.abspath(__file__)),''.join([INSTANCES_FOLDER,'/',instance.instance_name]))],
-                                        executable='/home/angelo/Downloads/google-cloud-sdk/bin/gcloud')
+                                        executable=GCLOUDEXECUTABLE)
                     if return_value == 0:
                         print(''.join([instance.instance_name,' finished.']))
                         self.outstanding_instance_files.remove(instance.instance_name)
@@ -91,18 +122,30 @@ class DistributedTraining():
                     print('Obtained all hyperparameter files.')
                     break
 
+        self.delete_instances()
+
 
     def show_instances_graphs(self):
+        """Displays figures of all trainings that happened on gcloud instances.
+
+        """
         plot_counter = 0
         for instance in self.g_cloud_instances:
             t_i = self.load_hyperparameters(instance.instance_name)
-            t_i.autosave = False
+            t_i.autosave = False # Otherwise an error would occur, as the instance has no RL object as member.
             t_i.init_online_plot(instance.instance_name,plot_counter)
             t_i.plot_statistics_online(t_i.victories,t_i.epsilons,t_i.cards,t_i.one_of_training_instances_wins,t_i.learning_rates,t_i.plot_interval)
             plot_counter+=1
 
 
     def load_hyperparameters(self,filename):
+        """Loads an instantiation of a TrainCatan object saved in a pickle file.
+
+        The file has to be located in the ./INSTANCES_FOLDER .
+
+        Args:
+            filename: Filename to be loaded.
+        """
         if not os.path.isfile(''.join([INSTANCES_FOLDER,'/',filename])):
             return
         f = open(''.join([INSTANCES_FOLDER,'/',filename]), 'rb')
