@@ -27,7 +27,9 @@ class TrainCatan:
                  autosave = True,
                  random_shuffle_training_players = False, # Shall the training player positions be randomized?
                  random_init = False,# Shall the game board be randomly initialized?
-                 show_cards_statistic = False
+                 show_cards_statistic = False,
+                 layer1_neurons = 50,
+                 layer2_neurons = 50
                  ):
         self.plot_interval = plot_interval
         self.show_cards_statistics = show_cards_statistic
@@ -60,6 +62,8 @@ class TrainCatan:
         self.cards = []
         self.epsilons = []
         self.learning_rates = []
+        self.layer1_neurons=layer1_neurons
+        self.layer2_neurons=layer2_neurons
 
 
     def save_hyperparameters(self,filename):
@@ -228,10 +232,10 @@ class TrainCatan:
                                batch_size=256
                       )
 
-    def init_online_plot(self,title='Figure',plot_counter = 0):
-
-        plt.figure(plot_counter)
-        plt.title(title)
+    def init_online_plot(self,title='Figure',plot_counter = 0,make_new_figure = True):
+        if make_new_figure:
+            plt.figure(plot_counter)
+            plt.title(title)
         plt.plot([],[],label='Player 1 vic')
         plt.plot([],[],label='Player 2 vic')
         plt.plot([],[],label='Player 3 vic')
@@ -248,7 +252,8 @@ class TrainCatan:
         plt.xlabel('Game number')
         plt.ylabel('Winning percentage / Epsilon value')
 
-    def plot_statistics_online(self,victories,epsilons,cards,win_rate,learning_rate,n_game_average):
+
+    def calc_averaged_statistics(self,victories,epsilons,cards,win_rate,learning_rate,n_game_average):
         start_ind = 0
         end_ind = 0
         avg_vic = []
@@ -271,21 +276,26 @@ class TrainCatan:
             avg_vic.append([sum(np.where(vic_extract==0,1,0))/len(vic_extract),sum(np.where(vic_extract==1,1,0))/len(vic_extract)
                                ,sum(np.where(vic_extract==2,1,0))/len(vic_extract),sum(np.where(vic_extract==3,1,0))/len(vic_extract)])
             avg_cards.append([sum(np.where(cards_extract==0,1,0))/len(cards_extract),sum(np.where(cards_extract==1,1,0))/len(cards_extract)
-                               ,sum(np.where(cards_extract==2,1,0))/len(cards_extract),sum(np.where(cards_extract==3,1,0))/len(cards_extract)])
+                                 ,sum(np.where(cards_extract==2,1,0))/len(cards_extract),sum(np.where(cards_extract==3,1,0))/len(cards_extract)])
             avg_eps.append(np.mean(eps_extract))
-            
+
             avg_win_rate.append(np.mean(win_rate_extract))
             avg_lr.append(np.mean(lr_extract))
             if end_ind == len(victories):
                 break
             start_ind = end_ind
         avg_vic = np.array(avg_vic)
+        avg_cards = np.array(avg_cards)
+
+        return avg_vic,avg_cards,avg_lr,avg_eps,avg_win_rate,num_games
+
+    def plot_statistics_online(self,victories,epsilons,cards,win_rate,learning_rate,n_game_average):
+        avg_vic,avg_cards,avg_lr,avg_eps,avg_win_rate,num_games = self.calc_averaged_statistics(victories,epsilons,cards,win_rate,learning_rate,n_game_average)
         
         if self.autosave:
             if avg_win_rate[-1] >= np.max(avg_win_rate):
                 self.RL.save_current_model(str(datetime.date.today()))
-        
-        avg_cards = np.array(avg_cards)
+
         for i in range(4):
             plt.gca().lines[i].set_xdata(num_games)
             plt.gca().lines[i].set_ydata(avg_vic[:,i])

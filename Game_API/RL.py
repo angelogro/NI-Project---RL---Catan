@@ -37,6 +37,8 @@ class DeepQNetwork:
             e_greedy_increment=None,
             output_graph=True,
             softmax_choice=False,
+            layer1_neurons=50,
+            layer2_neurons=50
     ):
         # Initialize the params passed from run_this file
         self.summaries_dir = 'Summaries'
@@ -54,7 +56,8 @@ class DeepQNetwork:
         self.learn_step_counter = 0
         # initialize zero memory [s, a, r, s_]
         self.memory = np.zeros((self.memory_size, n_features * 2 + 2))
-
+        self.layer1_neurons=layer1_neurons
+        self.layer2_neurons=layer2_neurons
         # consist of [target_net, evaluate_net]
         self.sess = tf.InteractiveSession()
         self._build_net()
@@ -85,7 +88,7 @@ class DeepQNetwork:
         with tf.variable_scope('eval_net'):
             # c_names(collections_names) are the collections to store variables
             c_names, n_l1,n_l2, w_initializer, b_initializer = \
-                ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], 50,50, \
+                ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], self.layer1_neurons,self.layer2_neurons, \
                 tf.random_normal_initializer(0., 0.1), tf.constant_initializer(0.1)  # config of layers
 
             # first layer. collections is used later when assign to target net

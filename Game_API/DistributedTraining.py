@@ -7,6 +7,7 @@ import sys
 import time
 import pickle
 from shutil import copyfile
+from matplotlib import pyplot as plt
 
 INSTANCES_FOLDER = 'instance_parameters'
 GCLOUDEXECUTABLE = '/home/angelo/Downloads/google-cloud-sdk/bin/gcloud'
@@ -40,7 +41,7 @@ class DistributedTraining():
         self.t = TrainCatan()
         for param in param_dic:
             if not hasattr(self.t, param):
-                print('TrainCatan has no attribute named '+param)
+                print(''.join(['TrainCatan has no attribute named ',param]))
                 sys.exit()
 
 
@@ -130,12 +131,23 @@ class DistributedTraining():
 
         """
         plot_counter = 0
+        subplotcounter =0
+        subplotnum = 321
+        fig = plt.figure(plot_counter)
         for instance in self.g_cloud_instances:
+            ax = fig.add_subplot(subplotnum)
+            ax.title.set_text(instance.instance_name)
             t_i = self.load_hyperparameters(instance.instance_name)
-            t_i.autosave = False # Otherwise an error would occur, as the instance has no RL object as member.
-            t_i.init_online_plot(instance.instance_name,plot_counter)
+            t_i.autosave = False
+            t_i.init_online_plot(make_new_figure = False)
             t_i.plot_statistics_online(t_i.victories,t_i.epsilons,t_i.cards,t_i.one_of_training_instances_wins,t_i.learning_rates,t_i.plot_interval)
-            plot_counter+=1
+            subplotnum+=1
+            subplotcounter+=1
+            if subplotcounter%6 ==0:
+                plot_counter+=1
+                fig = plt.figure(plot_counter)
+                subplotnum = 321
+
 
 
     def load_hyperparameters(self,filename):

@@ -38,4 +38,4 @@ sudo chmod -R 777 *
 cd NI-Project---RL---Catan/Game_API/
 
 
-sudo python3 instance_exe.py learningrates6 learning_rate 0.005
+sudo python3 instance_exe.py learningratereplaceiter24 num_games 15000 replace_target_iter 100 learning_rate 0.3 random_init True layer1_neurons 1000 layer2_neurons 1000
