@@ -29,7 +29,9 @@ class TrainCatan:
                  random_init = False,# Shall the game board be randomly initialized?
                  show_cards_statistic = False,
                  layer1_neurons = 50,
-                 layer2_neurons = 50
+                 layer2_neurons = 50,
+                 verbose = True,
+                 print_episodes = False
                  ):
         self.plot_interval = plot_interval
         self.show_cards_statistics = show_cards_statistic
@@ -44,6 +46,8 @@ class TrainCatan:
         self.final_epsilon = final_epsilon
         self.epsilon_increase = epsilon_increase
         self.softmax_choice = softmax_choice
+        self.layer1_neurons=layer1_neurons
+        self.layer2_neurons=layer2_neurons
 
         self.init_training_environment()
         self.training_players = np.where(np.array(position_training_instances)==1)[0]
@@ -62,8 +66,10 @@ class TrainCatan:
         self.cards = []
         self.epsilons = []
         self.learning_rates = []
-        self.layer1_neurons=layer1_neurons
-        self.layer2_neurons=layer2_neurons
+
+        self.verbose = verbose
+        self.print_episodes = print_episodes
+
 
 
     def save_hyperparameters(self,filename):
@@ -184,31 +190,38 @@ class TrainCatan:
                 step += 1
                 
                 if np.all(np.array(self.done_buffer)[self.training_players]==1):
-                    print(self.reward_buffer)
-                    print('Game '+ str(episode)+' finished after ' + str(iteration_counter)+' iterations.####################################################')
-                    print('Victory Points ' +str(env.get_victory_points()))
-                    print('Cards '+str(np.sum(env.cards,axis=1)))
-                    if training :
-                        self.RL.epsilon = np.tanh((episode-self.eps_mid)*self.eps_stretch_factor)*0.5+0.5
-                        self.RL.lr = self.learning_rate_decay(episode)
-                    print('Epsilon '+str(self.RL.epsilon)+'\n')
-                    self.cards.append(np.argmax(np.sum(env.cards,axis=1)))
-                    self.victories.append(np.argmax(env.get_victory_points()))
-                    self.one_of_training_instances_wins.append(np.sum(np.array(self.reward_buffer))/len(self.training_players))
-                    self.epsilons.append(self.RL.epsilon)
-                    self.learning_rates.append(self.RL.lr)
-                    self.statistics.append(iteration_counter)
-
+                    self.gather_statistics(env,iteration_counter,training,episode)
                     if (len(self.victories)%self.plot_interval==0) and (episode>0):
                         
                         self.plot_statistics_online(self.victories, self.epsilons,self.cards,self.one_of_training_instances_wins,self.learning_rates,self.plot_interval)
-
+                        if self.print_episodes:
+                            with open('episodes', 'w') as f:
+                                f.write(str(episode))
+                                f.close()
                     break
 
         plt.show()
         # end of game
         print('Run Finished')
         self.print_stored_actions()
+
+    def gather_statistics(self, env,iteration_counter,training,episode):
+        if self.verbose:
+            print(self.reward_buffer)
+            print('Game '+ str(episode)+' finished after ' + str(iteration_counter)+' iterations.####################################################')
+            print('Victory Points ' +str(env.get_victory_points()))
+            print('Cards '+str(np.sum(env.cards,axis=1)))
+        if training :
+            self.RL.epsilon = np.tanh((episode-self.eps_mid)*self.eps_stretch_factor)*0.5+0.5
+            self.RL.lr = self.learning_rate_decay(episode)
+        if self.verbose:
+            print('Epsilon '+str(self.RL.epsilon)+'\n')
+        self.cards.append(np.argmax(np.sum(env.cards,axis=1)))
+        self.victories.append(np.argmax(env.get_victory_points()))
+        self.one_of_training_instances_wins.append(np.sum(np.array(self.reward_buffer))/len(self.training_players))
+        self.epsilons.append(self.RL.epsilon)
+        self.learning_rates.append(self.RL.lr)
+        self.statistics.append(iteration_counter)
 
     def play_game(self,position_training_instances = (1,0,0,0),epsilon=1.0):
         if not hasattr(self,'RL'):
@@ -229,7 +242,10 @@ class TrainCatan:
                       replace_target_iter=self.replace_target_iter,
                       memory_size=self.memory_size,
                       softmax_choice=self.softmax_choice,
-                               batch_size=256
+                        batch_size=256,
+                               layer1_neurons=self.layer1_neurons,
+                               layer2_neurons=self.layer2_neurons
+
                       )
 
     def init_online_plot(self,title='Figure',plot_counter = 0,make_new_figure = True):

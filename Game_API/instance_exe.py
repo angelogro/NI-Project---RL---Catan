@@ -27,7 +27,7 @@ def isint(value):
 
 if __name__ == "__main__":
 
-    train = TrainCatan()
+    train = TrainCatan(print_episodes=True)
 
     for param,param_value in pairwise(sys.argv[2:]): #first argument is executed file,second argument is instance name
         if isint(param_value):

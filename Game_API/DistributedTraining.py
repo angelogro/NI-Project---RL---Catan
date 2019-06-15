@@ -12,6 +12,7 @@ from matplotlib import pyplot as plt
 INSTANCES_FOLDER = 'instance_parameters'
 GCLOUDEXECUTABLE = '/home/angelo/Downloads/google-cloud-sdk/bin/gcloud'
 
+
 ZONES = ('europe-west1-b',#'europe-west1-c','europe-west1-d',
          'europe-west2-a',#'europe-west2-b','europe-west2-c',
          'europe-west3-a',#'europe-west3-b','europe-west3-c',
@@ -112,12 +113,16 @@ class DistributedTraining():
             for instance in self.g_cloud_instances:
 
                 if instance.instance_name in self.outstanding_instance_files:
-                    return_value = subprocess.call(["gcloud", "compute" ,"scp","--zone",instance.zone, ''.join([instance.instance_name,':/catan/NI-Project---RL---Catan/Game_API/hyperparameters/',instance.instance_name,'/',instance.instance_name])
-                                            ,os.path.join(os.path.dirname(os.path.abspath(__file__)),''.join([INSTANCES_FOLDER,'/',instance.instance_name]))],
-                                        executable=GCLOUDEXECUTABLE)
-                    if return_value == 0:
+                    dst_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),''.join([INSTANCES_FOLDER,'/',instance.instance_name]))
+                    src_file = ''.join(['hyperparameters/',instance.instance_name,'/',instance.instance_name])
+                    if self.scp_request(instance,src_file,dst_file) == 0:
                         print(''.join([instance.instance_name,' finished.']))
                         self.outstanding_instance_files.remove(instance.instance_name)
+                    else:
+                        episode_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'episodes')
+                        self.scp_request(instance,'episodes',episode_path)
+                        with open(episode_path,'r') as f:
+                            print(f.read())
 
                 if len(self.outstanding_instance_files) == 0:
                     print('Obtained all hyperparameter files.')
@@ -125,6 +130,18 @@ class DistributedTraining():
 
         self.delete_instances()
 
+    def scp_request(self,instance,src_filename,dst_filename):
+        """
+        Request file from instance. The relative path is the folder /catan/NI-Project---RL---Catan/Game_API/.
+
+        :param instance: name of the instance
+        :param filename: filename to be requested
+        :return: error code, 0: scp transfer worked just fine
+        """
+        return_value = subprocess.call(["gcloud", "compute" ,"scp","--zone",instance.zone, ''.join([instance.instance_name,':/catan/NI-Project---RL---Catan/Game_API/',src_filename])
+                                           ,dst_filename],
+                                       executable=GCLOUDEXECUTABLE)
+        return return_value
 
     def show_instances_graphs(self):
         """Displays figures of all trainings that happened on gcloud instances.

@@ -8,7 +8,7 @@ from DistributedTraining import DistributedTraining
 train = None
 d = None
 if __name__ == "__main__":
-    d = DistributedTraining('learningratereplaceiter',{'num_games' : [15000],'replace_target_iter':[100],'learning_rate':[0.3],'random_init' : [True],
+    d = DistributedTraining('randominitneuronnumbers',{'num_games' : [15000],'replace_target_iter':[100],'learning_rate':[0.3],
                                                        'layer1_neurons':[10,30,100,300,1000],'layer2_neurons':[10,30,100,300,1000]})
 
     
