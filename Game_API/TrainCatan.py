@@ -126,8 +126,11 @@ class TrainCatan:
     
     def random_shuffle_training_players(self):
         # Returns the binary representation of the training players
-        rand_num = np.random.randint(15)+1
-        return np.where(np.unpackbits(np.array(rand_num, dtype=np.uint8))[-4:]==1)[0]
+        # DID NOT WORK TOO WELL rand_num = np.random.randint(15)+1
+        # DID NOT WORK TOO WELL return np.where(np.unpackbits(np.array(rand_num, dtype=np.uint8))[-4:]==1)[0]
+        # Rather train only one player per round?
+        rand_num = np.random.randint(4)
+        return np.array([rand_num])
          
     
     def start_training(self,training = True):
@@ -137,8 +140,7 @@ class TrainCatan:
         step = 0
         for episode in range(self.num_games):
             # initial observation, get state space
-            if self.random_shuffle_training_players_:
-                self.training_players=self.random_shuffle_training_players()
+
             env = Game(random_init=self.random_init,action_space=self.action_space,needed_victory_points=self.needed_victory_points,reward=self.reward)
             
             state_space = env.get_state_space()
@@ -194,6 +196,8 @@ class TrainCatan:
                 if np.all(np.array(self.done_buffer)[self.training_players]==1):
                     self.gather_statistics(env,iteration_counter,training,episode)
                     if (len(self.victories)%self.plot_interval==0) and (episode>0):
+                        if self.random_shuffle_training_players_:
+                            self.training_players=self.random_shuffle_training_players()
                         
                         self.plot_statistics_online(self.victories, self.epsilons,self.cards,self.one_of_training_instances_wins,self.learning_rates,self.plot_interval)
                         if self.print_episodes:

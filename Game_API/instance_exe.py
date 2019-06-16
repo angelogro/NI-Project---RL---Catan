@@ -41,7 +41,7 @@ if __name__ == "__main__":
             setattr(train,param,int(param_value))
         elif isfloat(param_value):
             setattr(train,param,float(param_value))
-        elif istuple(param_value):
+        elif type(param_value) is tuple:
             setattr(train,param,eval(param_value))
         else:
             setattr(train,param,param_value)

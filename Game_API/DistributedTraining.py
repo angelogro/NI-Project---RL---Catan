@@ -156,6 +156,8 @@ class DistributedTraining():
             ax = fig.add_subplot(subplotnum)
             ax.title.set_text(instance.instance_name)
             t_i = self.load_hyperparameters(instance.instance_name)
+            if t_i is None:
+                continue
             t_i.autosave = False
             t_i.init_online_plot(make_new_figure = False)
             t_i.plot_statistics_online(t_i.victories,t_i.epsilons,t_i.cards,t_i.one_of_training_instances_wins,t_i.learning_rates,t_i.plot_interval)

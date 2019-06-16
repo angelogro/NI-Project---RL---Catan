@@ -38,4 +38,4 @@ sudo chmod -R 777 *
 cd NI-Project---RL---Catan/Game_API/
 
 
-sudo python3 instance_exe.py randominitneuronnumber26 num_games 15000 replace_target_iter 100 learning_rate 0.3 layer1_neurons 50 layer2_neurons 30 verbose False batch_size 4096 sigmoid_001_009_borders '(3000, 9000)'
+sudo python3 instance_exe.py randominitshuffle31 num_games 15000 random_init False reward victory_only replace_target_iter 100 learning_rate 0.3 layer1_neurons 50 layer2_neurons 30 verbose False sigmoid_001_099_borders '(-2000, 10000)' learning_rate_decay_factor 0.9995 batch_size 4096
