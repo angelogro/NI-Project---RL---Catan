@@ -118,17 +118,18 @@ class DistributedTraining():
                     if self.scp_request(instance,src_file,dst_file) == 0:
                         print(''.join([instance.instance_name,' finished.']))
                         self.outstanding_instance_files.remove(instance.instance_name)
+                        instance.remove_instance()
                     else:
                         episode_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'episodes')
                         self.scp_request(instance,'episodes',episode_path)
-                        with open(episode_path,'r') as f:
-                            print(f.read())
+                        if os.path.isfile(episode_path):
+                            with open(episode_path,'r') as f:
+                                print(''.join([str(instance.instance_name),' current episode: ',f.read()]))
 
                 if len(self.outstanding_instance_files) == 0:
                     print('Obtained all hyperparameter files.')
                     break
 
-        self.delete_instances()
 
     def scp_request(self,instance,src_filename,dst_filename):
         """

@@ -31,7 +31,8 @@ class TrainCatan:
                  layer1_neurons = 50,
                  layer2_neurons = 50,
                  verbose = True,
-                 print_episodes = False
+                 print_episodes = False,
+                 batch_size = 256
                  ):
         self.plot_interval = plot_interval
         self.show_cards_statistics = show_cards_statistic
@@ -48,6 +49,7 @@ class TrainCatan:
         self.softmax_choice = softmax_choice
         self.layer1_neurons=layer1_neurons
         self.layer2_neurons=layer2_neurons
+        self.batch_size = batch_size
 
         self.init_training_environment()
         self.training_players = np.where(np.array(position_training_instances)==1)[0]
@@ -55,8 +57,7 @@ class TrainCatan:
         self.action_buffer=[None,None,None,None]
         self.reward_buffer=[None,None,None,None]
 
-        self.eps_mid = np.mean(sigmoid_001_009_borders)
-        self.eps_stretch_factor = np.arctanh((0.99-0.5)/0.5)/(sigmoid_001_009_borders[1]-self.eps_mid)
+        self.sigmoid_001_009_borders = sigmoid_001_009_borders
         self.autosave = autosave
         
         self.random_init = random_init
@@ -132,6 +133,7 @@ class TrainCatan:
     def start_training(self,training = True):
         self.init_taken_action_storage()
         self.init_online_plot()
+        self.init_epsilon_function()
         step = 0
         for episode in range(self.num_games):
             # initial observation, get state space
@@ -242,7 +244,7 @@ class TrainCatan:
                       replace_target_iter=self.replace_target_iter,
                       memory_size=self.memory_size,
                       softmax_choice=self.softmax_choice,
-                        batch_size=256,
+                        batch_size=self.batch_size,
                                layer1_neurons=self.layer1_neurons,
                                layer2_neurons=self.layer2_neurons
 
@@ -334,4 +336,8 @@ class TrainCatan:
             return self.learning_rate
         self.learning_rate*=self.learning_rate_decay_factor
         return self.learning_rate
+
+    def init_epsilon_function(self):
+        self.eps_mid = np.mean(self.sigmoid_001_009_borders)
+        self.eps_stretch_factor = np.arctanh((0.99-0.5)/0.5)/(self.sigmoid_001_009_borders[1]-self.eps_mid)
 

@@ -8,8 +8,17 @@ from DistributedTraining import DistributedTraining
 train = None
 d = None
 if __name__ == "__main__":
-    d = DistributedTraining('randominitneuronnumbers',{'num_games' : [15000],'replace_target_iter':[100],'learning_rate':[0.3],
-                                                       'layer1_neurons':[10,30,100,300,1000],'layer2_neurons':[10,30,100,300,1000]})
+    d = DistributedTraining('sigmoidborder',{'num_games' : [15000],'replace_target_iter':[100],'learning_rate':[0.3],
+                                                       'layer1_neurons':[50],'layer2_neurons':[30],'verbose':[False],
+                                                      'batch_size':[4096,4096,4096],'sigmoid_001_009_borders' : [(-1000,5000),
+                                                                                                                 (-1000,7000),
+                                                                                                                 (-1000,9000),
+                                                                                                                 (1000,5000),
+                                                                                                                 (1000,7000),
+                                                                                                                 (1000,9000),
+                                                                                                                 (3000,5000),
+                                                                                                                 (3000,7000),
+                                                                                                                 (3000,9000)]})
 
     
 
