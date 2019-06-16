@@ -25,6 +25,13 @@ def isint(value):
     except ValueError:
         return False
 
+def istuple(value):
+    try:
+        tuple(value)
+        return True
+    except ValueError:
+        return False
+
 if __name__ == "__main__":
 
     train = TrainCatan(print_episodes=True)
@@ -34,6 +41,8 @@ if __name__ == "__main__":
             setattr(train,param,int(param_value))
         elif isfloat(param_value):
             setattr(train,param,float(param_value))
+        elif istuple(param_value):
+            setattr(train,param,eval(param_value))
         else:
             setattr(train,param,param_value)
 

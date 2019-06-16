@@ -22,7 +22,7 @@ class TrainCatan:
                  final_epsilon=0.9,
                  epsilon_increase=1000, #since which game the epsilon shall start to increase exponentially
                  softmax_choice= False,
-                 sigmoid_001_009_borders = (-1000,5000), #epsilon sigmoid function
+                 sigmoid_001_099_borders = (-1000,5000), #epsilon sigmoid function
                  opponents = 'random_sample',
                  autosave = True,
                  random_shuffle_training_players = False, # Shall the training player positions be randomized?
@@ -57,7 +57,7 @@ class TrainCatan:
         self.action_buffer=[None,None,None,None]
         self.reward_buffer=[None,None,None,None]
 
-        self.sigmoid_001_009_borders = sigmoid_001_009_borders
+        self.sigmoid_001_099_borders = sigmoid_001_099_borders
         self.autosave = autosave
         
         self.random_init = random_init
@@ -338,6 +338,6 @@ class TrainCatan:
         return self.learning_rate
 
     def init_epsilon_function(self):
-        self.eps_mid = np.mean(self.sigmoid_001_009_borders)
-        self.eps_stretch_factor = np.arctanh((0.99-0.5)/0.5)/(self.sigmoid_001_009_borders[1]-self.eps_mid)
+        self.eps_mid = np.mean(self.sigmoid_001_099_borders)
+        self.eps_stretch_factor = np.arctanh((0.99-0.5)/0.5)/(self.sigmoid_001_099_borders[1]-self.eps_mid)
 
