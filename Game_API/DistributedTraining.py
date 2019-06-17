@@ -6,6 +6,7 @@ import os
 import sys
 import time
 import pickle
+import datetime
 from shutil import copyfile
 from matplotlib import pyplot as plt
 
@@ -182,3 +183,17 @@ class DistributedTraining():
             return
         f = open(''.join([INSTANCES_FOLDER,'/',filename]), 'rb')
         return pickle.load(f)
+
+    def get_model(self,instance_name):
+
+        for instance in self.g_cloud_instances:
+            dst_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),''.join(['/models/',instance.instance_name]))
+            if instance.instance_name == instance_name:
+                self.scp_request(instance,''.join(['/models/',str(datetime.date.today()),'.data-00000-of-00001']),
+                                                  ''.join([dst_file,'.data-00000-of-00001']))
+                self.scp_request(instance,''.join(['/models/',str(datetime.date.today()),'.index']),
+                                 ''.join([dst_file,'.index']))
+                self.scp_request(instance,''.join(['/models/',str(datetime.date.today()),'.meta']),
+                                 ''.join([dst_file,'.meta']))
+                self.scp_request(instance,''.join(['/models/','checkpoint']),
+                                 'checkpoint')
