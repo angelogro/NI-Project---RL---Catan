@@ -119,6 +119,7 @@ class DistributedTraining():
                     if self.scp_request(instance,src_file,dst_file) == 0:
                         print(''.join([instance.instance_name,' finished.']))
                         self.outstanding_instance_files.remove(instance.instance_name)
+                        self.get_model(instance.instance_name)
                         instance.remove_instance()
                     else:
                         episode_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'episodes')
@@ -187,13 +188,13 @@ class DistributedTraining():
     def get_model(self,instance_name):
 
         for instance in self.g_cloud_instances:
-            dst_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),''.join(['/models/',instance.instance_name]))
+            dst_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),''.join(['models/',instance.instance_name]))
             if instance.instance_name == instance_name:
-                self.scp_request(instance,''.join(['/models/',str(datetime.date.today()),'.data-00000-of-00001']),
+                self.scp_request(instance,''.join(['models/',str(datetime.date.today()),'.data-00000-of-00001']),
                                                   ''.join([dst_file,'.data-00000-of-00001']))
-                self.scp_request(instance,''.join(['/models/',str(datetime.date.today()),'.index']),
+                self.scp_request(instance,''.join(['models/',str(datetime.date.today()),'.index']),
                                  ''.join([dst_file,'.index']))
-                self.scp_request(instance,''.join(['/models/',str(datetime.date.today()),'.meta']),
+                self.scp_request(instance,''.join(['models/',str(datetime.date.today()),'.meta']),
                                  ''.join([dst_file,'.meta']))
-                self.scp_request(instance,''.join(['/models/','checkpoint']),
+                self.scp_request(instance,''.join(['models/','checkpoint']),
                                  'checkpoint')

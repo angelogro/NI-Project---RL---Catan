@@ -37,8 +37,7 @@ class DeepQNetwork:
             e_greedy_increment=None,
             output_graph=True,
             softmax_choice=False,
-            layer1_neurons=50,
-            layer2_neurons=50
+            list_num_neurons= (50,50)
     ):
         # Initialize the params passed from run_this file
         self.summaries_dir = 'Summaries'
@@ -56,8 +55,7 @@ class DeepQNetwork:
         self.learn_step_counter = 0
         # initialize zero memory [s, a, r, s_]
         self.memory = np.zeros((self.memory_size, n_features * 2 + 2))
-        self.layer1_neurons=layer1_neurons
-        self.layer2_neurons=layer2_neurons
+        self.list_num_neurons = list_num_neurons
         # consist of [target_net, evaluate_net]
         self.sess = tf.InteractiveSession()
         self._build_net()
@@ -85,29 +83,34 @@ class DeepQNetwork:
         self.s = tf.placeholder(tf.float32, [None, self.n_features], name='s')  # input
         self.q_target = tf.placeholder(tf.float32, [None, self.n_actions], name='Q_target')  # for calculating loss
 
+        amount_layers = len(self.list_num_neurons)
+        self.list_num_neurons = list(self.list_num_neurons)
+        self.list_num_neurons.append(self.n_actions)
         with tf.variable_scope('eval_net'):
             # c_names(collections_names) are the collections to store variables
-            c_names, n_l1,n_l2, w_initializer, b_initializer = \
-                ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], self.layer1_neurons,self.layer2_neurons, \
+            c_names, list_num_neurons, w_initializer, b_initializer = \
+                ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], self.list_num_neurons, \
                 tf.random_normal_initializer(0., 0.1), tf.constant_initializer(0.1)  # config of layers
+
 
             # first layer. collections is used later when assign to target net
             with tf.variable_scope('l1'):
-                self.w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
-                self.b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
+                self.w1 = tf.get_variable('w1', [self.n_features, list_num_neurons[0]], initializer=w_initializer, collections=c_names)
+                self.b1 = tf.get_variable('b1', [1, list_num_neurons[0]], initializer=b_initializer, collections=c_names)
                 self.l1 = tf.nn.tanh(tf.matmul(self.s, self.w1) + self.b1)
 
-            # second layer. collections is used later when assign to target net
-            with tf.variable_scope('l2'):
-                self.w2 = tf.get_variable('w2', [n_l1, n_l2], initializer=w_initializer, collections=c_names)
-                self.b2 = tf.get_variable('b2', [1, n_l2], initializer=b_initializer, collections=c_names)
-                self.l2 = tf.nn.tanh(tf.matmul(self.l1, self.w2) + self.b2)
+            for layer_num in range(len(list_num_neurons)-1):
 
-            # second layer. collections is used later when assign to target net
-            with tf.variable_scope('l3'):
-                self.w3 = tf.get_variable('w3', [n_l2, self.n_actions], initializer=w_initializer, collections=c_names)
-                self.b3 = tf.get_variable('b3', [1, self.n_actions], initializer=b_initializer, collections=c_names)
-                self.q_eval = tf.nn.tanh(tf.matmul(self.l1, self.w3) + self.b3)
+                # hidden layers. collections is used later when assign to target net
+                with tf.variable_scope(''.join(['l',str(layer_num+2)])):
+                    setattr(self,''.join(['w',str(layer_num+2)]) , tf.get_variable(''.join(['w',str(layer_num+2)]), [list_num_neurons[layer_num], list_num_neurons[layer_num+1]],
+                                                                              initializer=w_initializer, collections=c_names))
+                    setattr(self,''.join(['b',str(layer_num+2)]) , tf.get_variable(''.join(['b',str(layer_num+2)]), [1, list_num_neurons[layer_num+1]],
+                                                                              initializer=w_initializer, collections=c_names))
+                    setattr(self,''.join(['l',str(layer_num+2)]) , tf.nn.tanh(tf.matmul(getattr(self, ''.join(['l',str(layer_num+1)])),
+                                                                                           getattr(self,''.join(['w',str(layer_num+2)]))) + getattr(self,''.join(['b',str(layer_num+2)]))))
+
+            self.q_eval = getattr(self, ''.join(['l',str(amount_layers+1)]))
 
 
         with tf.variable_scope('loss'):
@@ -124,9 +127,30 @@ class DeepQNetwork:
 
             # first layer. collections is used later when assign to target net
             with tf.variable_scope('l1'):
+                self.w1 = tf.get_variable('w1', [self.n_features, list_num_neurons[0]], initializer=w_initializer, collections=c_names)
+                self.b1 = tf.get_variable('b1', [1, list_num_neurons[0]], initializer=b_initializer, collections=c_names)
+                self.l1 = tf.nn.tanh(tf.matmul(self.s, self.w1) + self.b1)
+
+            for layer_num in range(len(list_num_neurons)-1):
+
+                # hidden layers. collections is used later when assign to target net
+                with tf.variable_scope(''.join(['l',str(layer_num+2)])):
+                    setattr(self,''.join(['w',str(layer_num+2)]) , tf.get_variable(''.join(['w',str(layer_num+2)]), [list_num_neurons[layer_num], list_num_neurons[layer_num+1]],
+                                                                                   initializer=w_initializer, collections=c_names))
+                    setattr(self,''.join(['b',str(layer_num+2)]) , tf.get_variable(''.join(['b',str(layer_num+2)]), [1, list_num_neurons[layer_num+1]],
+                                                                                   initializer=w_initializer, collections=c_names))
+                    setattr(self,''.join(['l',str(layer_num+2)]) , tf.nn.tanh(tf.matmul(getattr(self, ''.join(['l',str(layer_num+1)])),
+                                                                                        getattr(self,''.join(['w',str(layer_num+2)]))) + getattr(self,''.join(['b',str(layer_num+2)]))))
+
+            self.q_next = getattr(self, ''.join(['l',str(amount_layers+1)]))
+
+            """
+            # first layer. collections is used later when assign to target net
+            with tf.variable_scope('l1'):
                 self.w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
                 self.b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
                 self.l1 = tf.nn.tanh(tf.matmul(self.s, self.w1) + self.b1)
+
 
             # second layer. collections is used later when assign to target net
             with tf.variable_scope('l2'):
@@ -139,6 +163,7 @@ class DeepQNetwork:
                 self.w3 = tf.get_variable('w3', [n_l2, self.n_actions], initializer=w_initializer, collections=c_names)
                 self.b3 = tf.get_variable('b3', [1, self.n_actions], initializer=b_initializer, collections=c_names)
                 self.q_next = tf.nn.tanh(tf.matmul(self.l1, self.w3) + self.b3)
+            """
 
     def store_transition(self, s, a, r, s_):
         if not hasattr(self, 'memory_counter'):

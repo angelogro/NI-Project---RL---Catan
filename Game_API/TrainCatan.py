@@ -28,8 +28,7 @@ class TrainCatan:
                  random_shuffle_training_players = False, # Shall the training player positions be randomized?
                  random_init = False,# Shall the game board be randomly initialized?
                  show_cards_statistic = False,
-                 layer1_neurons = 50,
-                 layer2_neurons = 50,
+                 list_num_neurons = (50,30),
                  verbose = True,
                  print_episodes = False,
                  batch_size = 256
@@ -47,8 +46,7 @@ class TrainCatan:
         self.final_epsilon = final_epsilon
         self.epsilon_increase = epsilon_increase
         self.softmax_choice = softmax_choice
-        self.layer1_neurons=layer1_neurons
-        self.layer2_neurons=layer2_neurons
+        self.list_num_neurons = list_num_neurons
         self.batch_size = batch_size
 
         self.init_training_environment()
@@ -169,22 +167,22 @@ class TrainCatan:
                     if env.current_player-1 != buffer_player: #When player one chooses do Nothing
                         self.state_space_buffer[buffer_player] = state_space
                     else:
-                        #if train:
-                        self.RL.store_transition(state_space, self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
+                        if training:
+                            self.RL.store_transition(state_space, self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
                 else:
                     action = np.random.choice(len(possible_actions), 1, p=possible_actions/sum(possible_actions))[0]
                     state_space_, r, possible_actions, d ,clabel= env.step(action)
 
                     if env.current_player-1 in self.training_players:
                         buffer_player = env.current_player-1
-                        if self.state_space_buffer[buffer_player] is not None and self.action_buffer[buffer_player] is not None:# and train:
+                        if self.state_space_buffer[buffer_player] is not None and self.action_buffer[buffer_player] is not None and training:
                             self.RL.store_transition(self.state_space_buffer[buffer_player], self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
 
                 self.add_action_to_storage(clabel,env.current_player-1)
 
                 # The game executes the action chosen by RL and gets next state and reward
 
-                if (step > 2000) and (step % 50 == 0):# and training:
+                if (step > 2000) and (step % 50 == 0) and training:
                     self.RL.learn()
 
                 # swap observation
@@ -219,7 +217,7 @@ class TrainCatan:
             print('Cards '+str(np.sum(env.cards,axis=1)))
         if training :
             self.RL.epsilon = np.tanh((episode-self.eps_mid)*self.eps_stretch_factor)*0.5+0.5
-            self.RL.lr = self.learning_rate_decay(episode)
+        self.RL.lr = self.learning_rate_decay(episode)
         if self.verbose:
             print('Epsilon '+str(self.RL.epsilon)+'\n')
         self.cards.append(np.argmax(np.sum(env.cards,axis=1)))
@@ -250,9 +248,7 @@ class TrainCatan:
                       memory_size=self.memory_size,
                       softmax_choice=self.softmax_choice,
                         batch_size=self.batch_size,
-                               layer1_neurons=self.layer1_neurons,
-                               layer2_neurons=self.layer2_neurons
-
+                               list_num_neurons = self.list_num_neurons
                       )
 
     def init_online_plot(self,title='Figure',plot_counter = 0,make_new_figure = True):
