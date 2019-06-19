@@ -114,7 +114,7 @@ class DeepQNetwork:
 
 
         with tf.variable_scope('loss'):
-            self.loss = tf.losses.huber_loss(self.q_target, self.q_eval)
+            self.loss = tf.losses.mean_squared_error(self.q_target, self.q_eval)
 
         with tf.variable_scope('train') as self.train_var:
             self._train_op = tf.train.GradientDescentOptimizer(self.lr).minimize(self.loss)

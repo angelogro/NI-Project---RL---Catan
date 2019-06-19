@@ -28,7 +28,7 @@ class TrainCatan:
                  random_shuffle_training_players = False, # Shall the training player positions be randomized?
                  random_init = False,# Shall the game board be randomly initialized?
                  show_cards_statistic = False,
-                 list_num_neurons = (50,30),
+                 list_num_neurons = (50,50),
                  verbose = True,
                  print_episodes = False,
                  batch_size = 256
