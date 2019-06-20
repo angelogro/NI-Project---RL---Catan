@@ -35,7 +35,7 @@ class DeepQNetwork:
             memory_size=500,
             batch_size=32,
             e_greedy_increment=None,
-            output_graph=True,
+            output_graph=False,
             softmax_choice=False,
             list_num_neurons= (50,50)
     ):
