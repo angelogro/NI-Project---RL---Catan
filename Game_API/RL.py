@@ -286,10 +286,10 @@ class DeepQNetwork:
         if self.learn_step_counter % self.replace_target_iter == 0:
             summary = self.sess.run(self.tf_loss_summary,feed_dict={self.tf_loss_ph:self.cost})
             if self.output_graph:
-                    # Returning Errors
-                    self.writer.add_summary(summary, self.learn_step_counter)
-                    self.writer.add_summary(gn_summ,self.learn_step_counter)
-            self.writer.add_summary(wb_summ,self.learn_step_counter)
+                # Returning Errors
+                self.writer.add_summary(summary, self.learn_step_counter)
+                self.writer.add_summary(gn_summ,self.learn_step_counter)
+                self.writer.add_summary(wb_summ,self.learn_step_counter)
 
         self.cost_his.append(self.cost)
 
