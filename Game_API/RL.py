@@ -41,6 +41,7 @@ class DeepQNetwork:
     ):
         # Initialize the params passed from run_this file
         self.summaries_dir = 'Summaries'
+        self.summaries = []
         self.n_actions = n_actions
         self.n_features = n_features
         self.lr = tf.Variable(learning_rate, trainable=False,dtype=tf.float64)
@@ -63,20 +64,24 @@ class DeepQNetwork:
         t_params = tf.get_collection('target_net_params')
         e_params = tf.get_collection('eval_net_params')
 
+        tau = 0.0001
 
-        self.replace_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
+        self.replace_hard_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
 
+        self.replace_soft_target_op = [v_t.assign(v_t * (1. - tau) + v * tau) for v_t, v in zip(t_params, e_params)]
 
+        self.output_graph = output_graph
 
-        if output_graph:
+        if self.output_graph:
             # $ tensorboard --logdir=logs
             # tf.train.SummaryWriter soon be deprecated, use following
-            tf.summary.FileWriter("logs/", self.sess.graph)
+            self.writer = tf.summary.FileWriter("logs/", self.sess.graph)
 
         self.sess.run(tf.global_variables_initializer())
         global_step_tensor = tf.Variable(0,trainable=False,name='global_step')
         self.sess.run(global_step_tensor.initializer)
         self.cost_his = []
+
 
     def _build_net(self):
         # ------------------ build evaluate_net ------------------
@@ -90,14 +95,15 @@ class DeepQNetwork:
             # c_names(collections_names) are the collections to store variables
             c_names, list_num_neurons, w_initializer, b_initializer = \
                 ['eval_net_params', tf.GraphKeys.GLOBAL_VARIABLES], self.list_num_neurons, \
-                tf.random_normal_initializer(0., 0.1), tf.constant_initializer(0.1)  # config of layers
+                tf.contrib.layers.xavier_initializer(), tf.random_uniform_initializer(-0.1,0.1)  # config of layers
 
 
             # first layer. collections is used later when assign to target net
             with tf.variable_scope('l1'):
                 self.w1 = tf.get_variable('w1', [self.n_features, list_num_neurons[0]], initializer=w_initializer, collections=c_names)
-                self.b1 = tf.get_variable('b1', [1, list_num_neurons[0]], initializer=b_initializer, collections=c_names)
-                self.l1 = tf.nn.tanh(tf.matmul(self.s, self.w1) + self.b1)
+                #self.b1 = tf.get_variable('b1', [1, list_num_neurons[0]], initializer=b_initializer, collections=c_names)
+                self.l1 = tf.nn.relu(tf.matmul(self.s, self.w1))# + self.b1)
+
 
             for layer_num in range(len(list_num_neurons)-1):
 
@@ -105,19 +111,22 @@ class DeepQNetwork:
                 with tf.variable_scope(''.join(['l',str(layer_num+2)])):
                     setattr(self,''.join(['w',str(layer_num+2)]) , tf.get_variable(''.join(['w',str(layer_num+2)]), [list_num_neurons[layer_num], list_num_neurons[layer_num+1]],
                                                                               initializer=w_initializer, collections=c_names))
-                    setattr(self,''.join(['b',str(layer_num+2)]) , tf.get_variable(''.join(['b',str(layer_num+2)]), [1, list_num_neurons[layer_num+1]],
-                                                                              initializer=w_initializer, collections=c_names))
-                    setattr(self,''.join(['l',str(layer_num+2)]) , tf.nn.tanh(tf.matmul(getattr(self, ''.join(['l',str(layer_num+1)])),
-                                                                                           getattr(self,''.join(['w',str(layer_num+2)]))) + getattr(self,''.join(['b',str(layer_num+2)]))))
+                    #setattr(self,''.join(['b',str(layer_num+2)]) , tf.get_variable(''.join(['b',str(layer_num+2)]), [1, list_num_neurons[layer_num+1]],
+                    #                                                          initializer=w_initializer, collections=c_names))
+                    setattr(self,''.join(['l',str(layer_num+2)]) , tf.nn.relu(tf.matmul(getattr(self, ''.join(['l',str(layer_num+1)])),
+                                                                                           getattr(self,''.join(['w',str(layer_num+2)]))))) #+ getattr(self,''.join(['b',str(layer_num+2)]))))
 
-            self.q_eval = getattr(self, ''.join(['l',str(amount_layers+1)]))
+            self.q_eval = getattr(self,''.join(['l',str(amount_layers+1)]))
 
 
         with tf.variable_scope('loss'):
             self.loss = tf.losses.mean_squared_error(self.q_target, self.q_eval)
+            
 
         with tf.variable_scope('train') as self.train_var:
-            self._train_op = tf.train.GradientDescentOptimizer(self.lr).minimize(self.loss)
+            optimizer =  tf.train.GradientDescentOptimizer(self.lr)
+            self.grads_and_vars = optimizer.compute_gradients(self.loss)
+            self._train_op = optimizer.minimize(self.loss)
 
         # ------------------ build target_net ------------------
         self.s_ = tf.placeholder(tf.float32, [None, self.n_features], name='s_')    # input
@@ -126,44 +135,74 @@ class DeepQNetwork:
             c_names = ['target_net_params', tf.GraphKeys.GLOBAL_VARIABLES]
 
             # first layer. collections is used later when assign to target net
-            with tf.variable_scope('l1'):
-                self.w1 = tf.get_variable('w1', [self.n_features, list_num_neurons[0]], initializer=w_initializer, collections=c_names)
-                self.b1 = tf.get_variable('b1', [1, list_num_neurons[0]], initializer=b_initializer, collections=c_names)
-                self.l1 = tf.nn.tanh(tf.matmul(self.s, self.w1) + self.b1)
+            with tf.variable_scope('lt1'):
+                self.wt1 = tf.get_variable('wt1', [self.n_features, list_num_neurons[0]], initializer=w_initializer, collections=c_names)
+                #self.bt1 = tf.get_variable('bt1', [1, list_num_neurons[0]], initializer=b_initializer, collections=c_names)
+                self.lt1 = tf.nn.relu(tf.matmul(self.s_, self.wt1) )#+ self.b1)
 
             for layer_num in range(len(list_num_neurons)-1):
 
                 # hidden layers. collections is used later when assign to target net
-                with tf.variable_scope(''.join(['l',str(layer_num+2)])):
-                    setattr(self,''.join(['w',str(layer_num+2)]) , tf.get_variable(''.join(['w',str(layer_num+2)]), [list_num_neurons[layer_num], list_num_neurons[layer_num+1]],
+                with tf.variable_scope(''.join(['lt',str(layer_num+2)])):
+                    setattr(self,''.join(['wt',str(layer_num+2)]) , tf.get_variable(''.join(['wt',str(layer_num+2)]), [list_num_neurons[layer_num], list_num_neurons[layer_num+1]],
                                                                                    initializer=w_initializer, collections=c_names))
-                    setattr(self,''.join(['b',str(layer_num+2)]) , tf.get_variable(''.join(['b',str(layer_num+2)]), [1, list_num_neurons[layer_num+1]],
-                                                                                   initializer=w_initializer, collections=c_names))
-                    setattr(self,''.join(['l',str(layer_num+2)]) , tf.nn.tanh(tf.matmul(getattr(self, ''.join(['l',str(layer_num+1)])),
-                                                                                        getattr(self,''.join(['w',str(layer_num+2)]))) + getattr(self,''.join(['b',str(layer_num+2)]))))
+                    #setattr(self,''.join(['bt',str(layer_num+2)]) , tf.get_variable(''.join(['b',str(layer_num+2)]), [1, list_num_neurons[layer_num+1]],
+                    #                                                               initializer=w_initializer, collections=c_names))
+                    setattr(self,''.join(['lt',str(layer_num+2)]) , tf.nn.relu(tf.matmul(getattr(self, ''.join(['lt',str(layer_num+1)])),
+                                                                                        getattr(self,''.join(['wt',str(layer_num+2)])))))# + getattr(self,''.join(['bt',str(layer_num+2)]))))
 
-            self.q_next = getattr(self, ''.join(['l',str(amount_layers+1)]))
-
-            """
-            # first layer. collections is used later when assign to target net
-            with tf.variable_scope('l1'):
-                self.w1 = tf.get_variable('w1', [self.n_features, n_l1], initializer=w_initializer, collections=c_names)
-                self.b1 = tf.get_variable('b1', [1, n_l1], initializer=b_initializer, collections=c_names)
-                self.l1 = tf.nn.tanh(tf.matmul(self.s, self.w1) + self.b1)
+            self.q_next = getattr(self,''.join(['lt',str(amount_layers+1)]))
 
 
-            # second layer. collections is used later when assign to target net
-            with tf.variable_scope('l2'):
-                self.w2 = tf.get_variable('w2', [n_l1, n_l2], initializer=w_initializer, collections=c_names)
-                self.b2 = tf.get_variable('b2', [1, n_l2], initializer=b_initializer, collections=c_names)
-                self.l2 = tf.nn.tanh(tf.matmul(self.l1, self.w2) + self.b2)
+        # Name scope allows you to group various summaries together
+        # Summaries having the same name_scope will be displayed on the same row
+        with tf.name_scope('performance'):
+            # Summaries need to be displayed
+            # Whenever you need to record the loss, feed the mean loss to this placeholder
+            self.tf_loss_ph = tf.placeholder(tf.float32,shape=None,name='loss_summary')
+            # Create a scalar summary object for the loss so it can be displayed
+            self.tf_loss_summary = tf.summary.scalar('loss', self.tf_loss_ph)
 
-            # second layer. collections is used later when assign to target net
-            with tf.variable_scope('l3'):
-                self.w3 = tf.get_variable('w3', [n_l2, self.n_actions], initializer=w_initializer, collections=c_names)
-                self.b3 = tf.get_variable('b3', [1, self.n_actions], initializer=b_initializer, collections=c_names)
-                self.q_next = tf.nn.tanh(tf.matmul(self.l1, self.w3) + self.b3)
-            """
+        for g,v in self.grads_and_vars:
+            if ''.join(['w',str(amount_layers+1)]) in v.name :
+                with tf.name_scope('gradients'):
+                    self.tf_last_grad_norm = tf.sqrt(tf.reduce_mean(g**2))
+                    self.tf_gradnorm_summary = tf.summary.scalar('grad_norm', self.tf_last_grad_norm)
+                    break
+
+        # Summaries need to be displayed
+        # Create a summary for each weight bias in each layer
+        all_summaries = []
+
+        with tf.variable_scope('eval_net',reuse=True):
+            for lid in range(len(list_num_neurons)):
+                layer_name = ''.join(['l',str(lid+1)])
+                with tf.name_scope(layer_name+'_hist'):
+                    with tf.variable_scope(layer_name,reuse=True):
+                        w = tf.get_variable(''.join(['w',str(lid+1)]))#, tf.get_variable(''.join(['b',str(lid+1)]))
+                        #w,b = tf.get_variable(''.join(['w',str(lid+1)],tf.get_variable(''.join(['b',str(lid+1)]))
+
+                        # Create a scalar summary object for the loss so it can be displayed
+                        tf_w_hist = tf.summary.histogram('weights_hist', tf.reshape(w,[-1]))
+                        #tf_b_hist = tf.summary.histogram('bias_hist', b)
+                        all_summaries.extend([tf_w_hist])#, tf_b_hist])
+
+        with tf.variable_scope('target_net',reuse=True):
+            for lid in range(len(list_num_neurons)):
+                layer_name = ''.join(['lt',str(lid+1)])
+                with tf.name_scope(layer_name+'_hist'):
+                    with tf.variable_scope(layer_name,reuse=True):
+                        w = tf.get_variable(''.join(['wt',str(lid+1)]))#, tf.get_variable(''.join(['b',str(lid+1)]))
+                        #w,b = tf.get_variable(''.join(['w',str(lid+1)],tf.get_variable(''.join(['b',str(lid+1)]))
+
+                        # Create a scalar summary object for the loss so it can be displayed
+                        tf_w_hist = tf.summary.histogram('weights_hist', tf.reshape(w,[-1]))
+                        #tf_b_hist = tf.summary.histogram('bias_hist', b)
+                        all_summaries.extend([tf_w_hist])#, tf_b_hist])
+
+        # Merge all parameter histogram summaries together
+        self.tf_param_summaries = tf.summary.merge(all_summaries)
+
 
     def store_transition(self, s, a, r, s_):
         if not hasattr(self, 'memory_counter'):
@@ -173,6 +212,12 @@ class DeepQNetwork:
 
         # replace the old memory with new memory
         index = self.memory_counter % self.memory_size
+
+        if ((self.memory_counter*4) % self.memory_size == 0) and (self.memory_counter > 1000):
+            for i in range(1000):
+
+                self.learn()
+                self.learn_step_counter -= 1
 
         self.memory[index, :] = transition
 
@@ -193,9 +238,6 @@ class DeepQNetwork:
             if self.softmax_choice:
 
                 q_softmax = softmax(q_poss)
-                if self.learn_step_counter % self.replace_target_iter == 0:
-                    print('Possible action values: '+str(q_poss))
-                    print('Corresponding SOftmax values: '+str(q_softmax))
                 return possible_action_indices[np.random.choice(len(q_softmax),1,p=q_softmax)[0]]
 
             action = possible_action_indices[np.argmax(q_poss)]
@@ -206,8 +248,8 @@ class DeepQNetwork:
     def learn(self):
         #
         # check to replace target parameters
-        if self.learn_step_counter % self.replace_target_iter == 0:
-            self.sess.run(self.replace_target_op)
+        #if self.learn_step_counter % self.replace_target_iter == 0:
+        self.sess.run(self.replace_soft_target_op)
 
             #print('\ntarget_params_replaced\n')
 
@@ -237,14 +279,19 @@ class DeepQNetwork:
 
 
         # train eval network
-        summary, self.cost = self.sess.run([self._train_op, self.loss],
+        summary,self.cost,gn_summ,wb_summ = self.sess.run([self._train_op, self.loss,self.tf_gradnorm_summary,self.tf_param_summaries],
                                      feed_dict={self.s: batch_memory[:, :self.n_features],
-                                                self.q_target: q_target})
+                                                self.q_target: q_target
+                                                })
+        if self.learn_step_counter % self.replace_target_iter == 0:
+            summary = self.sess.run(self.tf_loss_summary,feed_dict={self.tf_loss_ph:self.cost})
+            if self.output_graph:
+                    # Returning Errors
+                    self.writer.add_summary(summary, self.learn_step_counter)
+                    self.writer.add_summary(gn_summ,self.learn_step_counter)
+            self.writer.add_summary(wb_summ,self.learn_step_counter)
 
         self.cost_his.append(self.cost)
-
-        # increasing epsilon
-        #self.epsilon = self.epsilon + self.epsilon_increment if self.epsilon < self.epsilon_max else self.epsilon_max
 
         self.learn_step_counter += 1
 

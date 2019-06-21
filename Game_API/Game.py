@@ -192,6 +192,7 @@ class Game:
 			game_finished = 1
 			if np.argmax(self.get_victory_points())==player_num-1: #Player 1
 				reward += 1
+
 				
 		if self.reward == 'victory_only':
 			pass

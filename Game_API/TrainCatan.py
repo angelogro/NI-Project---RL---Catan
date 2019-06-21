@@ -31,12 +31,13 @@ class TrainCatan:
                  list_num_neurons = (50,50),
                  verbose = True,
                  print_episodes = False,
-                 batch_size = 256
+                 batch_size = 256,
+                 output_graph = False
                  ):
         self.plot_interval = plot_interval
         self.show_cards_statistics = show_cards_statistic
         self.action_space = action_space
-
+        self.output_graph = output_graph
         self.position_training_instances = position_training_instances
         self.random_shuffle_training_players_ = random_shuffle_training_players
         self.needed_victory_points,self.reward = needed_victory_points,reward
@@ -194,6 +195,7 @@ class TrainCatan:
                 if np.all(np.array(self.done_buffer)[self.training_players]==1):
                     self.gather_statistics(env,iteration_counter,training,episode)
                     if (len(self.victories)%self.plot_interval==0) and (episode>0):
+
                         if self.random_shuffle_training_players_:
                             self.training_players=self.random_shuffle_training_players()
                         
@@ -248,7 +250,8 @@ class TrainCatan:
                       memory_size=self.memory_size,
                       softmax_choice=self.softmax_choice,
                         batch_size=self.batch_size,
-                               list_num_neurons = self.list_num_neurons
+                               list_num_neurons = self.list_num_neurons,
+                               output_graph = self.output_graph
                       )
 
     def init_online_plot(self,title='Figure',plot_counter = 0,make_new_figure = True):
