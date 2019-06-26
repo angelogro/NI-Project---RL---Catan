@@ -35,6 +35,17 @@ class Game:
 		self.seven_rolled = 0
 		self.rob_player_state = 0
 
+		# Initialize dev_card stack
+
+		self.dev_cards = np.zeros((4, 5))
+		self.dev_cards_discovered = np.zeros((4, 5))
+		self.dev_cards_playable = np.zeros((4, 5))
+
+		self.dev_card_stack = [defines.DEV_KNIGHT] * 14 + [defines.DEV_VICTORYPOINT] * 5 \
+							+ [defines.DEV_MONOPOLY] * 2 + [defines.DEV_YEAROFPLENTY] * 2 \
+							+ [defines.DEV_ROADBUILDING] * 2
+		random.shuffle(self.dev_card_stack)
+
 		# Action Counter
 		self.action_counter = 20
 
@@ -382,6 +393,7 @@ class Game:
 			player_num = robbed_player_index + 1
 			robbed_player_index = 0
 
+		#print("Robbed player: ", robbed_player_index)
 		rob_resource_index=np.random.choice(np.arange(5),1,p=self.cards[robbed_player_index,:]/sum(self.cards[robbed_player_index,:]))[0]
 		self.cards[robbed_player_index,rob_resource_index]-=1
 		self.cards[player_num-1,rob_resource_index]+=1
@@ -894,12 +906,84 @@ class Game:
         """
 		vp = []
 		buildingstate = self.crossings.get_building_state()
+		#devcardstate = self.get_dev_card_state()
 		for i in range(4):
 			player_num=i+1
 			vp.append(sum(buildingstate==player_num)+2*sum(buildingstate==(player_num+4)))
 		return np.array(vp)
 
-	### State Space Getters
+	def get_dev_card(self, player_num):
+
+		#check if stack is empty
+
+		if self.dev_card_stack:
+			#TBD resources need to be checked if available
+			self.pay(player_num, buying_good='Development Card')
+
+			drawn_card = self.dev_card_stack[0]
+			self.dev_card_stack.remove(drawn_card)
+			self.dev_cards[player_num][drawn_card] += 1
+
+	def dev_playable(self):
+		#makes cards drawn last round playable
+		#difference from round before and now -> playable cards
+
+		pass
+
+	# vllt alles eher in eine fkt hauen
+
+	def dev_knight(self, robbed_player_index, action_ind, player_num):
+
+		if self.dev_cards_playable[player_num][defines.DEV_KNIGHT]:
+
+			self.dev_cards[player_num][defines.DEV_KNIGHT] -= 1
+			self.dev_cards_playable[player_num][defines.DEV_KNIGHT] -= 1
+			self.dev_cards_discovered[player_num][defines.DEV_KNIGHT] += 1
+
+			self.move_robber(action_ind, player_num)
+			self.rob_player(robbed_player_index, player_num+1)
+		pass
+
+	def dev_vic(self, player_num):
+		if self.dev_cards_playable[player_num][defines.DEV_VICTORYPOINT]:
+
+			self.dev_cards[player_num][defines.DEV_VICTORYPOINT] -= 1
+			self.dev_cards_playable[player_num][defines.DEV_VICTORYPOINT] -= 1
+			self.dev_cards_discovered[player_num][defines.DEV_VICTORYPOINT] += 1
+
+		pass
+
+	def dev_yearofplenty(self, player_num):
+		if self.dev_cards_playable[player_num][defines.DEV_YEAROFPLENTY]:
+
+			self.dev_cards[player_num][defines.DEV_YEAROFPLENTY] -= 1
+			self.dev_cards_playable[player_num][defines.DEV_YEAROFPLENTY] -= 1
+			self.dev_cards_discovered[player_num][defines.DEV_YEAROFPLENTY] += 1
+
+			self.cards
+		pass
+
+	def dev_monopoly(self, player_num):
+		if self.dev_cards_playable[player_num][defines.DEV_MONOPOLY]:
+
+			self.dev_cards[player_num][defines.DEV_MONOPOLY] -= 1
+			self.dev_cards_playable[player_num][defines.DEV_MONOPOLY] -= 1
+			self.dev_cards_discovered[player_num][defines.DEV_MONOPOLY] += 1
+
+		pass
+
+	def dev_road(self, road_index, player_num):
+		if self.dev_cards_playable[player_num][defines.DEV_ROADBUILDING]:
+
+			self.dev_cards[player_num][defines.DEV_ROADBUILDING] -= 1
+			self.dev_cards_playable[player_num][defines.DEV_ROADBUILDING] -= 1
+			self.dev_cards_discovered[player_num][defines.DEV_ROADBUILDING]+= 1
+
+		for _ in range(2):
+			self.roads.place_road(road_index, player_num)
+		pass
+
+### State Space Getters
 	def get_state_space_tiles(self):
 		# Returns a flattened One-hot representation of the resources for each tile
 		return self.tile_space

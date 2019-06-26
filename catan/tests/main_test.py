@@ -3,11 +3,29 @@ from game.game import Game
 
 import time
 
+def test_devknight():
+    g = Game(random_init=False)
+
+    #for _ in range(3):
+    #    g.get_dev_card(1)
+
+    g.dev_cards[0, 0] = 2
+    g.dev_cards_playable[0,0] = 2
+    g.cards[0, 0] = 10
+    g.cards[1, 0] = 10
+    g.place_settlement(2, 1)
+    g.dev_knight(1, 0, 0)
+
+    print(g.dev_cards)
+    print(g.cards)
+
+test_devcards()
+
 def test_action_array():
     g = Game(random_init=False)
     g.create_possible_actions_dictionary()
 
-test_action_array()
+#test_action_array()
 
 def test_2vs1_trade_until_no_more_ore():
     g = Game(random_init=False)
