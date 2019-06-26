@@ -480,13 +480,13 @@ class Game:
 			return
 
 
-		if self.check_resources_available(player_num,'Road') == False:
+		if self.check_resources_available(player_num, 'Road') == False:
 			return np.zeros(defines.NUM_EDGES)
 		if self.seven_rolled or self.rob_player_state:
 			return np.zeros(defines.NUM_EDGES)
 
 
-		# During normal gameplay...
+		# During normal game play...
 
 		# Find all roads of player player_num and look for edges they are connected to
 		conn_roads = np.array(self.roads.connected_roads)
@@ -510,7 +510,7 @@ class Game:
         :param player_num:
             Number of the player.
 
-				buying_good:
+		:param	buying_good:
 			One of the following: 'Road', 'Settlement', 'City', 'Development Card'
         """
 		if buying_good=='Road':
@@ -529,7 +529,7 @@ class Game:
         :param player_num:
             Number of the player.
 
-				buying_good:
+		:param buying_good:
 			One of the following: 'Road', 'Settlement', 'City', 'Development Card'
         """
 		if buying_good=='Road':
@@ -908,8 +908,11 @@ class Game:
 		buildingstate = self.crossings.get_building_state()
 		#devcardstate = self.get_dev_card_state()
 		for i in range(4):
-			player_num=i+1
-			vp.append(sum(buildingstate==player_num)+2*sum(buildingstate==(player_num+4)))
+			player_num = i+1
+			vp.append(sum(buildingstate == player_num)
+					+ 2*sum(buildingstate == (player_num+4))
+					+ self.dev_cards_discovered[player_num-1][defines.DEV_VICTORYPOINT])
+
 		return np.array(vp)
 
 	def get_dev_card(self, player_num):
@@ -960,7 +963,6 @@ class Game:
 			self.dev_cards_playable[player_num][defines.DEV_YEAROFPLENTY] -= 1
 			self.dev_cards_discovered[player_num][defines.DEV_YEAROFPLENTY] += 1
 
-			self.cards
 		pass
 
 	def dev_monopoly(self, player_num):
@@ -969,7 +971,7 @@ class Game:
 			self.dev_cards[player_num][defines.DEV_MONOPOLY] -= 1
 			self.dev_cards_playable[player_num][defines.DEV_MONOPOLY] -= 1
 			self.dev_cards_discovered[player_num][defines.DEV_MONOPOLY] += 1
-
+		
 		pass
 
 	def dev_road(self, road_index, player_num):

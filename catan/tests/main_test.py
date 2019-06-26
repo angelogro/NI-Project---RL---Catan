@@ -1,8 +1,19 @@
+import time
+
 from game import defines
 from game.game import Game
 
-import time
 
+
+def test_devvic():
+    g = Game(random_init=False)
+    g.dev_cards_discovered[0, defines.DEV_VICTORYPOINT] = 2
+    g.dev_cards_discovered[2, defines.DEV_VICTORYPOINT] = 3
+
+    print(g.dev_cards_discovered)
+    print(g.get_victory_points())
+
+test_devvic()
 def test_devknight():
     g = Game(random_init=False)
 
@@ -19,7 +30,7 @@ def test_devknight():
     print(g.dev_cards)
     print(g.cards)
 
-test_devcards()
+#test_devknight()
 
 def test_action_array():
     g = Game(random_init=False)
