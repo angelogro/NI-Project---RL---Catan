@@ -35,7 +35,7 @@ class TrainCatan:
                  output_graph = False
                  ):
         self.plot_interval = plot_interval
-        self.show_cards_statistics = show_cards_statistic
+        self.show_cards_statistic = show_cards_statistic
         self.action_space = action_space
         self.output_graph = output_graph
         self.position_training_instances = position_training_instances
@@ -264,7 +264,7 @@ class TrainCatan:
         plt.plot([],[],label='Player 2 vic')
         plt.plot([],[],label='Player 3 vic')
         plt.plot([],[],label='Player 4 vic')
-        if self.show_cards_statistics:
+        if self.show_cards_statistic:
             plt.plot([],[],label='Player 1 cards')
             plt.plot([],[],label='Player 2 cards')
             plt.plot([],[],label='Player 3 cards')
@@ -323,16 +323,16 @@ class TrainCatan:
         for i in range(4):
             plt.gca().lines[i].set_xdata(num_games)
             plt.gca().lines[i].set_ydata(avg_vic[:,i])
-        if self.show_cards_statistics:
+        if self.show_cards_statistic:
             for i in range(4):
                 plt.gca().lines[i+4].set_xdata(num_games)
                 plt.gca().lines[i+4].set_ydata(avg_cards[:,i])
-        plt.gca().lines[4+self.show_cards_statistics*4].set_xdata(num_games)
-        plt.gca().lines[4+self.show_cards_statistics*4].set_ydata(avg_eps)
-        plt.gca().lines[5+self.show_cards_statistics*4].set_xdata(num_games)
-        plt.gca().lines[5+self.show_cards_statistics*4].set_ydata(avg_win_rate)
-        plt.gca().lines[6+self.show_cards_statistics*4].set_xdata(num_games)
-        plt.gca().lines[6+self.show_cards_statistics*4].set_ydata(avg_lr)
+        plt.gca().lines[4+self.show_cards_statistic*4].set_xdata(num_games)
+        plt.gca().lines[4+self.show_cards_statistic*4].set_ydata(avg_eps)
+        plt.gca().lines[5+self.show_cards_statistic*4].set_xdata(num_games)
+        plt.gca().lines[5+self.show_cards_statistic*4].set_ydata(avg_win_rate)
+        plt.gca().lines[6+self.show_cards_statistic*4].set_xdata(num_games)
+        plt.gca().lines[6+self.show_cards_statistic*4].set_ydata(avg_lr)
         plt.gca().relim()
         plt.gca().autoscale_view()
         plt.pause(0.05)

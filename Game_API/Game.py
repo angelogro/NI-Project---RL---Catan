@@ -190,7 +190,7 @@ class Game:
 				if max_cards == np.sum(self.cards,axis=1)[player_num-1]:
 					return np.max(sum_cards)-np.max(np.delete(sum_cards,np.argmax(sum_cards))),1,' '
 				else:
-					return -np.max(sum_cards)+np.max(np.delete(sum_cards,np.argmax(sum_cards))),1,' '
+					return -np.max(sum_cards)+np.sum(self.cards,axis=1)[player_num-1],1,' '
 
 			else:
 				return 0,0,' '
