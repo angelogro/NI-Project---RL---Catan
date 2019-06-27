@@ -165,6 +165,8 @@ class TrainCatan:
                     self.action_buffer[buffer_player] = self.RL.choose_action(state_space,possible_actions)
                     state_space_, self.reward_buffer[buffer_player], possible_actions, self.done_buffer[buffer_player],clabel = env.step(self.action_buffer[buffer_player])
                     #print(self.action_buffer[buffer_player])
+                    if np.all(np.array(self.done_buffer)[self.training_players]==1):
+                        self.RL.store_transition(state_space, self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
                     if env.current_player-1 != buffer_player: #When player one chooses do Nothing
                         self.state_space_buffer[buffer_player] = state_space
                     else:

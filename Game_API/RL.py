@@ -102,7 +102,7 @@ class DeepQNetwork:
             with tf.variable_scope('l1'):
                 self.w1 = tf.get_variable('w1', [self.n_features, list_num_neurons[0]], initializer=w_initializer, collections=c_names)
                 #self.b1 = tf.get_variable('b1', [1, list_num_neurons[0]], initializer=b_initializer, collections=c_names)
-                self.l1 = tf.nn.relu(tf.matmul(self.s, self.w1))# + self.b1)
+                self.l1 = tf.nn.tanh(tf.matmul(self.s, self.w1))# + self.b1)
 
 
             for layer_num in range(len(list_num_neurons)-1):
@@ -113,7 +113,7 @@ class DeepQNetwork:
                                                                               initializer=w_initializer, collections=c_names))
                     #setattr(self,''.join(['b',str(layer_num+2)]) , tf.get_variable(''.join(['b',str(layer_num+2)]), [1, list_num_neurons[layer_num+1]],
                     #                                                          initializer=w_initializer, collections=c_names))
-                    setattr(self,''.join(['l',str(layer_num+2)]) , tf.nn.relu(tf.matmul(getattr(self, ''.join(['l',str(layer_num+1)])),
+                    setattr(self,''.join(['l',str(layer_num+2)]) , tf.nn.tanh(tf.matmul(getattr(self, ''.join(['l',str(layer_num+1)])),
                                                                                            getattr(self,''.join(['w',str(layer_num+2)]))))) #+ getattr(self,''.join(['b',str(layer_num+2)]))))
 
             self.q_eval = getattr(self,''.join(['l',str(amount_layers+1)]))
@@ -124,7 +124,7 @@ class DeepQNetwork:
             
 
         with tf.variable_scope('train') as self.train_var:
-            optimizer =  tf.train.GradientDescentOptimizer(self.lr)
+            optimizer =  tf.train.RMSPropOptimizer(self.lr)
             self.grads_and_vars = optimizer.compute_gradients(self.loss)
             self._train_op = optimizer.minimize(self.loss)
 
@@ -138,7 +138,7 @@ class DeepQNetwork:
             with tf.variable_scope('lt1'):
                 self.wt1 = tf.get_variable('wt1', [self.n_features, list_num_neurons[0]], initializer=w_initializer, collections=c_names)
                 #self.bt1 = tf.get_variable('bt1', [1, list_num_neurons[0]], initializer=b_initializer, collections=c_names)
-                self.lt1 = tf.nn.relu(tf.matmul(self.s_, self.wt1) )#+ self.b1)
+                self.lt1 = tf.nn.tanh(tf.matmul(self.s_, self.wt1) )#+ self.b1)
 
             for layer_num in range(len(list_num_neurons)-1):
 
@@ -148,7 +148,7 @@ class DeepQNetwork:
                                                                                    initializer=w_initializer, collections=c_names))
                     #setattr(self,''.join(['bt',str(layer_num+2)]) , tf.get_variable(''.join(['b',str(layer_num+2)]), [1, list_num_neurons[layer_num+1]],
                     #                                                               initializer=w_initializer, collections=c_names))
-                    setattr(self,''.join(['lt',str(layer_num+2)]) , tf.nn.relu(tf.matmul(getattr(self, ''.join(['lt',str(layer_num+1)])),
+                    setattr(self,''.join(['lt',str(layer_num+2)]) , tf.nn.tanh(tf.matmul(getattr(self, ''.join(['lt',str(layer_num+1)])),
                                                                                         getattr(self,''.join(['wt',str(layer_num+2)])))))# + getattr(self,''.join(['bt',str(layer_num+2)]))))
 
             self.q_next = getattr(self,''.join(['lt',str(amount_layers+1)]))
@@ -212,13 +212,13 @@ class DeepQNetwork:
 
         # replace the old memory with new memory
         index = self.memory_counter % self.memory_size
-
+        """
         if ((self.memory_counter*4) % self.memory_size == 0) and (self.memory_counter > 1000):
             for i in range(1000):
 
                 self.learn()
                 self.learn_step_counter -= 1
-
+        """
         self.memory[index, :] = transition
 
         self.memory_counter += 1

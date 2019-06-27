@@ -38,4 +38,4 @@ sudo chmod -R 777 *
 cd NI-Project---RL---Catan/Game_API/
 
 
-sudo python3 instance_exe.py nn31 learning_rate 0.03 reward_decay 0.95 list_num_neurons '(100, 100, 100)' random_shuffle_training_players_ False needed_victory_points 3 replace_target_iter 200 verbose False memory_size 20000 sigmoid_001_099_borders '(-1000, 7000)' batch_size 32 learning_rate_start_decay 5000 num_games 15000 random_init False reward victory learning_rate_decay_factor 0.9998
+sudo python3 instance_exe.py nnvicpoints31 learning_rate 0.03 reward_decay 0.95 list_num_neurons '(100, 50, 100)' random_shuffle_training_players_ False needed_victory_points 6 replace_target_iter 200 verbose False memory_size 20000 sigmoid_001_099_borders '(-1000, 10000)' batch_size 32 learning_rate_start_decay 5000 num_games 15000 random_init True reward victory learning_rate_decay_factor 0.9998

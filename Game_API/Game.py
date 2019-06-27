@@ -42,8 +42,8 @@ class Game:
 		# Key: action space name, Value: [get_possible_actions_function, execute_corresponding_action_function]
 		self.action_array_names_dic = {'do_nothing':[self.get_possible_action_do_nothing,self.next_players_turn],
 									   'build_road':[self.get_possible_actions_build_road,self.place_road],
-									   'build_settlement':[self.get_possible_actions_build_settlement,self.place_settlement],
-									   'build_city':[self.get_possible_actions_build_city,self.place_city]}
+									   'build_settlement':[self.get_possible_actions_build_settlement,self.place_settlement]}
+									   #'build_city':[self.get_possible_actions_build_city,self.place_city]}
 		assert type(action_space) is str
 		if action_space == 'buildings_only':
 			# Trading necessary, otherwise game can get stuck as not all resources would be available
@@ -180,11 +180,18 @@ class Game:
 				if self.check_resource_available_on_pile(i) == False:
 					finished = True
 			if finished:
+				#return np.sum(self.cards,axis=1)[player_num-1]/(19*5),1,' '
+
+				#np.sqrt(np.max(sum_cards)-np.max(np.delete(sum_cards,np.argmax(sum_cards)))),1,' '
+
+
+				sum_cards = np.sum(self.cards,axis=1)
 				max_cards = np.max(np.sum(self.cards,axis=1))
 				if max_cards == np.sum(self.cards,axis=1)[player_num-1]:
-					return 1,1,' '
+					return np.max(sum_cards)-np.max(np.delete(sum_cards,np.argmax(sum_cards))),1,' '
 				else:
-					return -1,1,' '
+					return -np.max(sum_cards)+np.max(np.delete(sum_cards,np.argmax(sum_cards))),1,' '
+
 			else:
 				return 0,0,' '
 

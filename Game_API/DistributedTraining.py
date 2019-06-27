@@ -142,8 +142,7 @@ class DistributedTraining():
         :return: error code, 0: scp transfer worked just fine
         """
         return_value = subprocess.call(["gcloud", "compute" ,"scp","--zone",instance.zone, ''.join([instance.instance_name,':/catan/NI-Project---RL---Catan/Game_API/',src_filename])
-                                           ,dst_filename],
-                                       executable=GCLOUDEXECUTABLE)
+                                           ,dst_filename],executable=GCLOUDEXECUTABLE)
         return return_value
 
     def show_instances_graphs(self):
