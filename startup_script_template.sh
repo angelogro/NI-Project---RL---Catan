@@ -35,6 +35,6 @@ sudo git clone https://github.com/angelogro/NI-Project---RL---Catan.git
 
 sudo chmod -R 777 *
 
-cd NI-Project---RL---Catan/Game_API/
+cd NI-Project---RL---Catan/catan/
 
 sudo python3 instance_exe.py
