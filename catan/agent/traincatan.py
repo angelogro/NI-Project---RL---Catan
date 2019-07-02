@@ -7,6 +7,7 @@ from matplotlib import pyplot as plt
 
 from game.game import Game
 from agent.rl import DeepQNetwork
+from tests import test_scenarios
 
 class TrainCatan:
 
@@ -19,7 +20,7 @@ class TrainCatan:
                  e_greedy=0,
                  replace_target_iter=20,
                  memory_size=50000,
-                 num_games=10000,
+                 num_games=10,
                  final_epsilon=0.9,
                  epsilon_increase=1000, #since which game the epsilon shall start to increase exponentially
                  softmax_choice= False,
@@ -71,6 +72,8 @@ class TrainCatan:
         self.verbose = verbose
         self.print_episodes = print_episodes
 
+        self.optimal_crossing = []
+        self.placement_counter = 0
 
 
     def save_hyperparameters(self,filename):
@@ -131,18 +134,24 @@ class TrainCatan:
         # Rather train only one player per round?
         rand_num = np.random.randint(4)
         return np.array([rand_num])
-         
     
-    def start_training(self,training = True):
+    def start_training(self, training=True, test=False, mode=None):
         self.init_taken_action_storage()
         self.init_online_plot()
         self.init_epsilon_function()
+
         step = 0
         for episode in range(self.num_games):
             # initial observation, get state space
 
             env = Game(random_init=self.random_init,action_space=self.action_space,needed_victory_points=self.needed_victory_points,reward=self.reward)
-            
+
+            if test:
+                if mode == "initial_placement":
+                    env.tiles, self.optimal_crossing = test_scenarios.test_initial_placement()
+                    # look where settlements build -maybe return optimal placements
+                pass
+
             state_space = env.get_state_space()
             possible_actions = env.get_possible_actions(env.current_player)
             
@@ -207,9 +216,25 @@ class TrainCatan:
                                 f.close()
                     break
 
+            if test:
+                if mode == "initial_placement":
+                    # percentage on optimal placements of trained player
+                    for index, item in enumerate(env.building_state):
+                        # one player only, looking for settlement
+                        if ((self.training_players[0] + 1) == item) and (index in self.optimal_crossing):
+                            self.placement_counter += 1
+
+                        pass
+                    #print(env.building_state[:np.max(self.optimal_crossing)])
+
+
+
         plt.show()
         # end of game
         print('Run Finished')
+        if test:
+            print("Settlement placed correctly: " + str(self.placement_counter) +
+                  " out of " + str(self.num_games*2) + " times")
         self.print_stored_actions()
 
     def gather_statistics(self, env,iteration_counter,training,episode):

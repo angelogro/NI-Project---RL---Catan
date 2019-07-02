@@ -9,9 +9,10 @@ def test_devvic():
     g = Game(random_init=False)
     g.dev_cards_discovered[0, defines.DEV_VICTORYPOINT] = 2
     g.dev_cards_discovered[2, defines.DEV_VICTORYPOINT] = 3
-
-    print(g.dev_cards_discovered)
-    print(g.get_victory_points())
+    g.place_settlement(2,1)
+    print(g.building_state)
+    #print(g.dev_cards_discovered)
+    #print(g.get_victory_points())
 
 test_devvic()
 def test_devknight():

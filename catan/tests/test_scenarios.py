@@ -2,7 +2,7 @@
 def test_initial_placement():
     # set tiles 6,6,8,8 close or next to each other
     # to collect highest amount of cards
-    # just collecting random cards for reward = "cards"
+    # just collecting random cards -maybe for reward = "cards"
     tiles = [(0, 6), (4, 8), (0, 9),
                (3, 8), (4, 6), (1, 12), (1, 4),
                (1, 9), (3, 2), (5, 7), (2, 5), (1, 10),
