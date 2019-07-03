@@ -1045,6 +1045,18 @@ class Game:
 			card_state[[0, self.current_player-1]] = card_state[[self.current_player-1, 0]]
 		return np.ravel(card_state)/4 # divided by 4 in order to have inputs in similar ranges
 
+	def get_settlement_placement_scores(self):
+		scores = []
+		for neighbours in self.crossings.neighbouring_tiles:
+			tiles_numbers = self.tiles.get_tiles()
+			sum = 0
+			for tile in neighbours:
+				if(tiles_numbers[tile][1] != 7):
+					sum = sum + (tiles_numbers[tile][1])
+			scores.append(sum)
+		return  scores
+
+
 
 
 
