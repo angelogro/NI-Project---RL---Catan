@@ -10,12 +10,14 @@ train = None
 d = None
 if __name__ == "__main__":
 
-    d = DistributedTraining('cards',{'learning_rate':[0.1],'list_num_neurons':[(50,),(50,50),(50,50,50),(50,50,50,50)],'random_init':[True],
-                                                 'random_shuffle_training_players_':[False,True],'needed_victory_points':[3],
+    d = DistributedTraining('cards',{'learning_rate':[0.1],'list_num_neurons':[(50,),(50,50)],'random_init':[False],'activation_function':['relu','tanh'],'optimizer_function':['RMS','adam'],
+                                                 'random_shuffle_training_players_':[False],'needed_victory_points':[3],
                                              'replace_target_iter':[200],'verbose':[False],'memory_size':[100000],
                                                       'sigmoid_001_099_borders' : [(-1000,10000)],
                                              'batch_size':[1024],'learning_rate_start_decay':[5000],'num_games' : [20000,20000,20000,20000],
-                                             'reward':['cards'],'learning_rate_decay_factor':[0.9998]
+                                             'reward':['cards'],'learning_rate_decay_factor':[0.9998],'show_cards_statistic' : [True]
+
+
                                              })
     """
     train = TrainCatan(needed_victory_points=3, list_num_neurons=(50,), batch_size=1024, output_graph=False,show_cards_statistic=True,

@@ -31,13 +31,10 @@ cd catan
 
 sudo apt install git -y
 
-#sudo git clone -b TestingWithMultiplePlayerTraining --single-branch https://github.com/angelogro/NI-Project---RL---Catan.git
-sudo git clone https://github.com/angelogro/niproj.git
+sudo git clone https://github.com/angelogro/NI-Project---RL---Catan.git
 
 sudo chmod -R 777 *
 
-#cd NI-Project---RL---Catan/Game_API/
-cd niproj/catan/
+cd NI-Project---RL---Catan/catan/
 
-
-sudo python3 instance_exe.py cards31 learning_rate 0.1 list_num_neurons '(50, 50, 50, 50)' random_init True random_shuffle_training_players_ True needed_victory_points 3 replace_target_iter 200 verbose False memory_size 100000 sigmoid_001_099_borders '(-1000, 10000)' batch_size 1024 learning_rate_start_decay 5000 num_games 20000 reward cards learning_rate_decay_factor 0.9998
+sudo python3 instance_exe.py cards31 learning_rate 0.1 list_num_neurons '(50, 50)' random_init False activation_function tanh optimizer_function adam random_shuffle_training_players_ False needed_victory_points 3 replace_target_iter 200 verbose False memory_size 100000 sigmoid_001_099_borders '(-1000, 10000)' batch_size 1024 learning_rate_start_decay 5000 num_games 20000 reward cards learning_rate_decay_factor 0.9998 show_cards_statistic True

@@ -27,7 +27,7 @@ class GcloudInstance():
         self.params = params
 
         self.project_id = 'settlers'    #   HAS TO BE ADAPTED TO THE GCLOUD ACCOUNT
-        self.bucket = 'settlers_aacv'        #   HAS TO BE ADAPTED TO THE GCLOUD ACCOUNT
+        self.bucket = 'settlers'        #   HAS TO BE ADAPTED TO THE GCLOUD ACCOUNT
         self.zone = zone                #   HAS TO BE ADAPTED TO THE GCLOUD ACCOUNT
 
 
@@ -47,7 +47,7 @@ class GcloudInstance():
 
         # Configure the machine
         machine_type = "zones/%s/machineTypes/n1-standard-1" % zone
-        startup_script = open('/media/angelo/Daten/10_TU_Berlin/Module/NIProject/Structured/NI-Project---RL---Catan/startup_script.sh', 'r').read()
+        startup_script = open('/media/angelo/Daten/10_TU_Berlin/Module/NIProject/NI-Project---RL---Catan/startup_script.sh', 'r').read()
         image_url = "http://storage.googleapis.com/gce-demo-input/photo.jpg"
         image_caption = "Ready for dessert?"
 

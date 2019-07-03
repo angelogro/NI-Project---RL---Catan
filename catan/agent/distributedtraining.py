@@ -116,7 +116,7 @@ class DistributedTraining():
             for instance in self.g_cloud_instances:
 
                 if instance.instance_name in self.outstanding_instance_files:
-                    dst_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),''.join([INSTANCES_FOLDER,'/',instance.instance_name]))
+                    dst_file = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])),''.join([INSTANCES_FOLDER,'/',instance.instance_name]))
                     src_file = ''.join(['hyperparameters/',instance.instance_name,'/',instance.instance_name])
                     if self.scp_request(instance,src_file,dst_file) == 0:
                         print(''.join([instance.instance_name,' finished.']))
@@ -124,7 +124,7 @@ class DistributedTraining():
                         self.get_model(instance.instance_name)
                         instance.remove_instance()
                     else:
-                        episode_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),'episodes')
+                        episode_path = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])),'episodes')
                         self.scp_request(instance,'episodes',episode_path)
                         if os.path.isfile(episode_path):
                             with open(episode_path,'r') as f:
@@ -143,7 +143,7 @@ class DistributedTraining():
         :param filename: filename to be requested
         :return: error code, 0: scp transfer worked just fine
         """
-        return_value = subprocess.call(["gcloud", "compute" ,"scp","--zone",instance.zone, ''.join([instance.instance_name,':/catan/NI-Project---RL---Catan/Game_API/',src_filename])
+        return_value = subprocess.call(["gcloud", "compute" ,"scp","--zone",instance.zone, ''.join([instance.instance_name,':/catan/NI-Project---RL---Catan/catan/',src_filename])
                                            ,dst_filename],
                                        executable=GCLOUDEXECUTABLE)
         return return_value
@@ -190,7 +190,7 @@ class DistributedTraining():
     def get_model(self,instance_name):
 
         for instance in self.g_cloud_instances:
-            dst_file = os.path.join(os.path.dirname(os.path.abspath(__file__)),''.join(['models/',instance.instance_name]))
+            dst_file = os.path.join(os.path.dirname(os.path.abspath(sys.argv[0])),''.join(['models/',instance.instance_name]))
             if instance.instance_name == instance_name:
                 self.scp_request(instance,''.join(['models/',str(datetime.date.today()),'.data-00000-of-00001']),
                                                   ''.join([dst_file,'.data-00000-of-00001']))

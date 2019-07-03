@@ -164,7 +164,11 @@ class TrainCatan:
         self.list_num_neurons = list_num_neurons
         self.batch_size = batch_size
 
-        self.init_training_environment(activation_function,loss_function,optimizer_function)
+        self.activation_function = activation_function
+        self.loss_function = loss_function
+        self.optimizer_function = optimizer_function
+
+        self.init_training_environment(self.activation_function,self.loss_function,self.optimizer_function)
         self.training_players = np.where(np.array(position_training_instances)==1)[0]
         self.state_space_buffer=[None,None,None,None]
         self.action_buffer=[None,None,None,None]
