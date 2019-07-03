@@ -1,3 +1,4 @@
+import numpy as np
 
 def test_initial_placement():
     # set tiles 6,6,8,8 close or next to each other
@@ -19,7 +20,11 @@ def test_initial_placement():
     # count how often placed on crossings connected to tiles with highest prob to collect resources
 
 
-def one_settlement(self):
+def one_settlement():
+    # giving enough resources to build one settlement and a road
+    return np.array([1, 1, 0, 2, 2])
 
-   # giving enough resources to build one settlement
-    pass
+
+def test_city():
+    return np.array([2, 0, 3, 0, 0])
+

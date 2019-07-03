@@ -20,7 +20,7 @@ class TrainCatan:
                  e_greedy=0,
                  replace_target_iter=20,
                  memory_size=50000,
-                 num_games=10,
+                 num_games=5,
                  final_epsilon=0.9,
                  epsilon_increase=1000, #since which game the epsilon shall start to increase exponentially
                  softmax_choice= False,
@@ -150,6 +150,10 @@ class TrainCatan:
                 if mode == "initial_placement":
                     env.tiles, self.optimal_crossing = test_scenarios.test_initial_placement()
                     # look where settlements build -maybe return optimal placements
+                if mode == "one_set":
+                    env.cards[self.training_player[0]] += test_scenarios.one_settlement()
+                if mode == "test_city":
+                    env.cards[self.training_players[0]] += test_scenarios.test_city()
                 pass
 
             state_space = env.get_state_space()
@@ -223,16 +227,20 @@ class TrainCatan:
                         # one player only, looking for settlement
                         if ((self.training_players[0] + 1) == item) and (index in self.optimal_crossing):
                             self.placement_counter += 1
+                            print("Correctly placed")
 
                         pass
-                    #print(env.building_state[:np.max(self.optimal_crossing)])
+                    print(env.building_state[:5])
+                    print(env.building_state[8:12])
+                    print(env.building_state[18:22])
 
 
 
         plt.show()
         # end of game
         print('Run Finished')
-        if test:
+        print(self.optimal_crossing)
+        if test and mode == "inital_placement":
             print("Settlement placed correctly: " + str(self.placement_counter) +
                   " out of " + str(self.num_games*2) + " times")
         self.print_stored_actions()

@@ -21,12 +21,11 @@ if __name__ == "__main__":
                                              })
     """
     train = TrainCatan(needed_victory_points=3, list_num_neurons=(50,), batch_size=32, output_graph=False,
-                       learning_rate=0.5, softmax_choice=True,
+                       learning_rate=0.5, softmax_choice=True, reward="victory_only", num_games=1000,
                        memory_size=20000, sigmoid_001_099_borders=(-1000, 7000), replace_target_iter=200)
-    # train.RL.load_model('learningrate13.data-00000-of-00001')
+    #train.RL.load_model('learningrate13.data-00000-of-00001')
     # train.RL.epsilon = 1
-    train.start_training()
-
+    train.start_training(training=True, test=True, mode="test_city")
 
 
 
