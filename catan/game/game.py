@@ -1238,8 +1238,8 @@ class Game:
 
 	def get_settlement_placement_scores(self):
 		scores = []
+		tiles_numbers = self.tiles.get_tiles()
 		for neighbours in self.crossings.neighbouring_tiles:
-			tiles_numbers = self.tiles.get_tiles()
 			sum = 0
 			for tile in neighbours:
 				if (tiles_numbers[tile][1] != 7):
@@ -1247,4 +1247,12 @@ class Game:
 			scores.append(sum)
 		return scores
 
+	def get_best_spot_for_settlement_based_on_tile_numbers(self):
+		scores = self.get_settlement_placement_scores()
+		possible_build_actions = self.get_possible_actions_build_settlement(self.current_player)
+		pro = np.array(scores) * np.array(possible_build_actions)
+		return np.argmax(pro)
 
+	def build_settlement_at_crossing(self,crossing):
+		self.place_settlement(crossing,self.current_player)
+		self.count_up_action_counter()
