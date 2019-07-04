@@ -68,7 +68,7 @@ class DeepQNetwork:
         # consist of [target_net, evaluate_net]
         self.sess = tf.InteractiveSession()
 
-        self.get_NN_functions(loss_function,activation_function,optimizer_function,with_bias)
+        self.get_NN_functions(loss_function,activation_function,optimizer_function)
         self._build_net(self.loss_function,self.activation_function,self.optimizer_function)
         # get_collection return the list of values associated with target_net_params & eval_net_params (refer to  _build_net)
         t_params = tf.get_collection('target_net_params')

@@ -9,7 +9,7 @@ from agent.traincatan import TrainCatan
 train = None
 d = None
 if __name__ == "__main__":
-
+    """
     d = DistributedTraining('cardsrlfuns',{'learning_rate':[0.1],'list_num_neurons':[(50,)],'random_init':[False],'activation_function':['relu','tanh'],'optimizer_function':['RMS'],
                                            'loss_function':['huber','mse'],'reward_decay':[1],
                                                  'random_shuffle_training_players_':[False],'needed_victory_points':[3],
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     train.RL.load_model('2019-07-03.data-00000-of-00001')
     train.RL.epsilon = 1
     train.start_training(training=False)
-    """
+
 
 
 
