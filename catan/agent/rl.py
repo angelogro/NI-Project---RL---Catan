@@ -41,7 +41,9 @@ class DeepQNetwork:
             activation_function = 'relu',
             loss_function = 'mse',
             optimizer_function = 'gradient',
-            dropout_prob = 0.2
+            dropout_prob = 0.2,
+            with_bias = True,
+            replace_soft_target = False
     ):
         # Initialize the params passed from run_this file
         self.summaries_dir = 'Summaries'
@@ -58,6 +60,8 @@ class DeepQNetwork:
         self.epsilon = 0 if e_greedy_increment is not None else e_greedy
         self.learn_step_counter = 0
         self.dropout_prob = dropout_prob
+        self.with_bias = with_bias
+        self.replace_soft_target = replace_soft_target
         # initialize zero memory [s, a, r, s_]
         self.memory = np.zeros((self.memory_size, n_features * 2 + 2))
         self.list_num_neurons = list_num_neurons
@@ -70,11 +74,12 @@ class DeepQNetwork:
         t_params = tf.get_collection('target_net_params')
         e_params = tf.get_collection('eval_net_params')
 
+
         tau = 0.0001
+        self.replace_hard_target_op = [v_t.assign(v_t * (1. - tau) + v * tau) for v_t, v in zip(t_params, e_params)]
+        self.replace_soft_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
 
-        self.replace_hard_target_op = [tf.assign(t, e) for t, e in zip(t_params, e_params)]
 
-        self.replace_soft_target_op = [v_t.assign(v_t * (1. - tau) + v * tau) for v_t, v in zip(t_params, e_params)]
 
         self.output_graph = output_graph
 
@@ -295,10 +300,13 @@ class DeepQNetwork:
         return action
 
     def learn(self):
-        #
+
         # check to replace target parameters
-        #if self.learn_step_counter % self.replace_target_iter == 0:
-        self.sess.run(self.replace_soft_target_op)
+        if self.replace_soft_target:
+            self.sess.run(self.replace_soft_target_op)
+        else:
+            if self.learn_step_counter % self.replace_target_iter == 0:
+                self.sess.run(self.replace_hard_target_op)
 
             #print('\ntarget_params_replaced\n')
 
@@ -386,7 +394,10 @@ class DeepQNetwork:
         self.saver.save(self.sess,os.getcwd()+MODELFOLDER +model_name,global_step=global_step)
 
     def load_model(self,model_name):
+        print(os.getcwd()+MODELFOLDER+model_name)
         self.saver = tf.train.import_meta_graph(os.getcwd()+MODELFOLDER+model_name)
+
+
         self.saver.restore(self.sess,tf.train.latest_checkpoint(os.getcwd()+MODELFOLDER+'./'))
 
 

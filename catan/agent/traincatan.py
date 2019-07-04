@@ -146,7 +146,9 @@ class TrainCatan:
                  output_graph = False,
                  activation_function = 'relu',
                  loss_function = 'mse',
-                 optimizer_function = 'gradient'
+                 optimizer_function = 'gradient',
+                 with_bias = True,
+                 replace_soft_target = False
                  ):
         self.plot_interval = plot_interval
         self.show_cards_statistic = show_cards_statistic
@@ -167,6 +169,8 @@ class TrainCatan:
         self.activation_function = activation_function
         self.loss_function = loss_function
         self.optimizer_function = optimizer_function
+        self.with_bias = with_bias
+        self.replace_soft_target = replace_soft_target
 
         self.init_training_environment(self.activation_function,self.loss_function,self.optimizer_function)
         self.training_players = np.where(np.array(position_training_instances)==1)[0]
@@ -334,7 +338,7 @@ class TrainCatan:
 
                     self.action_buffer[buffer_player] = self.RL.choose_action(state_space,possible_actions)
                     state_space_, self.reward_buffer[buffer_player], possible_actions, self.done_buffer[buffer_player],clabel = env.step(self.action_buffer[buffer_player])
-                    if np.all(np.array(self.done_buffer)[self.training_players]==1):
+                    if np.all(np.array(self.done_buffer)[self.training_players]==1) and training:
                         self.RL.store_transition(state_space, self.action_buffer[buffer_player], self.reward_buffer[buffer_player], state_space_)
                     if env.current_player-1 != buffer_player: #When player one chooses do Nothing
                         self.state_space_buffer[buffer_player] = state_space
@@ -440,7 +444,9 @@ class TrainCatan:
                       output_graph = self.output_graph,
                       activation_function= activation_function,
                       loss_function=loss_function,
-                      optimizer_function=optimizer_function
+                      optimizer_function=optimizer_function,
+                      with_bias = self.with_bias,
+                      replace_soft_target = self.replace_soft_target
                       )
 
     def init_online_plot(self,title='Figure',plot_counter = 0,make_new_figure = True):
