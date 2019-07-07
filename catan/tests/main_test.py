@@ -1,7 +1,8 @@
 import time
 
-from game import defines
+from game.game import defines
 from game.game import Game
+import numpy as np
 
 
 
@@ -573,6 +574,6 @@ def test_initial_position_bias():
                 print(g.get_victory_points())
                 break
 
-#test_initial_position_bias()
+test_develop_four_player_w_init()
 
 
