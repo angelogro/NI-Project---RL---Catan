@@ -2,7 +2,7 @@
 University project, developing an Agent which learns playing the Catan board game (https://www.catan.com/game/catan)
 
 <!-- Bild vom Board oder Ähnliches hinzufügen -->
-![CatanBoard]()
+![CatanBoard](https://github.com/angelogro/NI-Project---RL---Catan/blob/master/catan/images/CatanBoardRep.png)
 ## Getting started 
 1. Clone repository 
 2. Install all dependencies
@@ -34,6 +34,6 @@ The list of parameters / attributes and functions can be seen in the module Trai
 #### DistributedTraining
 When creating the object from class DistributedTraining,
 the amount of vectors of hyperparameters are used to create a set of hyperparameter combinations by means of the cartesian product. GCloud instances are launched with each element of that set.
-![DistributedTraining]()
+![DistributedTraining](https://github.com/angelogro/NI-Project---RL---Catan/blob/master/catan/images/DistributedTraining.png)
 
 
