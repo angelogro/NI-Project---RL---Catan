@@ -11,15 +11,17 @@ import numpy as np
 def test_gui():
 
     g = Game(random_init=True)
-    print(g.tiles.get_tiles())
-
+    #print(g.tiles.get_tiles())
+    #print(len(g.crossings.get_building_state()))
+    #print(g.roads.get_state())
     app = QApplication(sys.argv)
 
-    ex = App(g.tiles.get_tiles())
+    ex = App(g.tiles.get_tiles(), g.crossings.get_building_state(), g.roads.get_state())
 
     sys.exit(app.exec_())
 
 test_gui()
+
 def test_devvic():
     g = Game(random_init=False)
     g.dev_cards_discovered[0, defines.DEV_VICTORYPOINT] = 2
@@ -28,7 +30,7 @@ def test_devvic():
     print(g.dev_cards_discovered)
     print(g.get_victory_points())
 
-test_devvic()
+#test_devvic()
 def test_devknight():
     g = Game(random_init=False)
 
@@ -588,6 +590,6 @@ def test_initial_position_bias():
                 print(g.get_victory_points())
                 break
 
-test_develop_four_player_w_init()
+#test_develop_four_player_w_init()
 
 
