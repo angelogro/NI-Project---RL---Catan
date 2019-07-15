@@ -1,11 +1,25 @@
 import time
+import sys
+from PyQt5.QtWidgets import QApplication, QWidget
 
 from game.game import defines
 from game.game import Game
+from game.boardgui import App
 import numpy as np
 
 
+def test_gui():
 
+    g = Game(random_init=True)
+    print(g.tiles.get_tiles())
+
+    app = QApplication(sys.argv)
+
+    ex = App(g.tiles.get_tiles())
+
+    sys.exit(app.exec_())
+
+test_gui()
 def test_devvic():
     g = Game(random_init=False)
     g.dev_cards_discovered[0, defines.DEV_VICTORYPOINT] = 2

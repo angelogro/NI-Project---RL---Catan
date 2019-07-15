@@ -8,13 +8,14 @@ class App(QWidget):
 
 	def __init__(self,tiles):
 		super().__init__()
-		self.title = 'PyQt5 simple window - pythonspot.com'
+		self.title = 'Catan'
 		self.left = 10
 		self.top = 10
 		self.width = 1080
 		self.height = 1080
 		self.initUI()
 		self.tiles = tiles
+
 	def initUI(self):
 		self.setWindowTitle(self.title)
 		self.setGeometry(self.left, self.top, self.width, self.height)
@@ -88,7 +89,7 @@ class App(QWidget):
 				i +=1
 
 
-if __name__ == '__main__':
+"""if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = App()
     sys.exit(app.exec_())
@@ -96,4 +97,4 @@ else:
 	app = QApplication(sys.argv)
 	ex = App()
 	sys.exit(app.exec_())
-
+"""
