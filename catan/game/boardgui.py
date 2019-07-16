@@ -106,12 +106,13 @@ class Board(QWidget):
     def paintEvent(self, e):
         qp = QPainter()
         qp.begin(self)
-        self.draw_hex(e, qp)
-        self.draw_settlements(e, qp)
+        self.draw_hex(qp)
+        self.draw_settlements(qp)
+        self.draw_road(qp)
         qp.end()
 
     # TBD: make scalable with window size
-    def draw_hex(self, e, qp):
+    def draw_hex(self, qp):
         print(len(self.coordinates))
         i = 0
         for counter, x in enumerate(self.coordinates):
@@ -141,7 +142,7 @@ class Board(QWidget):
 
                 i += 1
 
-    def draw_settlements(self, e, qp):
+    def draw_settlements(self, qp):
 
         # print("Coordinates: ", self.coordinates[0][0])
         # print(len(self.building_coord))
@@ -159,9 +160,14 @@ class Board(QWidget):
                 5 - City P1, 6 - City P2, 7 - City P3, 8 - City P4, 9 - No building possible
         """
     # refresh building and road state
-    def draw_road(self):
+    def draw_road(self, qp):
+        for counter, road in enumerate(self.road_state):
+            self.player_color(road, qp)
+            print(road)
+            if road != 0:
+                print("Hey!")
+                qp.drawLine(self.road_coord[counter][0], self.road_coord[counter][1])
 
-        pass
 
     def refresh_building_road_states(self, building_state, road_state):
         self.building_state = building_state

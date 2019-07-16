@@ -15,10 +15,11 @@ def test_gui():
     g.place_settlement(10, 2)
     g.place_settlement(32, 3)
     g.place_city(50, 1)
-
+    g.place_road(12, 2)
+    g.place_road(15, 3)
     #print(g.tiles.get_tiles())
     #print(len(g.crossings.get_building_state()))
-    print(len(g.roads.get_state()))
+    print(g.roads.get_state())
     app = QApplication(sys.argv)
 
     ex = Board(g.tiles.get_tiles(), g.roads.get_roads(), g.crossings.get_building_state(), g.roads.get_roads())
