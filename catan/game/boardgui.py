@@ -1,13 +1,13 @@
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget
 from PyQt5.QtGui import QPainter, QPolygon, QColor, QFont
-from PyQt5.QtCore import Qt, QPoint
+from PyQt5.QtCore import Qt, QPoint, QSize
 import numpy as np
 
 
-class App(QWidget):
+class Board(QWidget):
 
-    def __init__(self, tiles, buildings, roads):
+    def __init__(self, tiles, roads, building_state, road_state):
         super().__init__()
         self.title = 'Catan'
         self.left = 10
@@ -15,10 +15,41 @@ class App(QWidget):
         self.width = 1080
         self.height = 1080
         self.initUI()
+
         self.tiles = tiles
-        self.buildings = buildings
-        self.roads = roads
+        self.building_state, self.road_state = building_state, road_state
         self.coordinates, self.water = self.init_coordinates()  # has QPolygon Objects
+        self.building_coord = [self.coordinates[5][0], self.coordinates[5][1], self.coordinates[5][2],
+                               self.coordinates[6][1], self.coordinates[6][2],
+                               self.coordinates[7][1], self.coordinates[7][2],
+
+                               self.coordinates[10][0], self.coordinates[10][1], self.coordinates[10][2],
+                               self.coordinates[11][1], self.coordinates[11][2],
+                               self.coordinates[12][1], self.coordinates[12][2],
+                               self.coordinates[13][1], self.coordinates[13][2],
+
+                               self.coordinates[16][0], self.coordinates[16][1], self.coordinates[16][2],
+                               self.coordinates[17][1], self.coordinates[17][2],
+                               self.coordinates[18][1], self.coordinates[18][2],
+                               self.coordinates[19][1], self.coordinates[19][2],
+                               self.coordinates[20][1], self.coordinates[20][2],
+
+                               self.coordinates[16][5], self.coordinates[16][4], self.coordinates[16][3],
+                               self.coordinates[17][4], self.coordinates[17][3],
+                               self.coordinates[18][4], self.coordinates[18][3],
+                               self.coordinates[19][4], self.coordinates[19][3],
+                               self.coordinates[20][4], self.coordinates[20][3],
+
+                               self.coordinates[23][5], self.coordinates[23][4], self.coordinates[23][3],
+                               self.coordinates[24][4], self.coordinates[24][3],
+                               self.coordinates[25][4], self.coordinates[25][3],
+                               self.coordinates[26][4], self.coordinates[26][3],
+
+                               self.coordinates[29][5], self.coordinates[29][4], self.coordinates[29][3],
+                               self.coordinates[30][4], self.coordinates[30][3],
+                               self.coordinates[31][4], self.coordinates[31][3]]
+
+        self.road_coord = self.init_road_coord(roads)
 
     def initUI(self):
         self.setWindowTitle(self.title)
@@ -66,6 +97,12 @@ class App(QWidget):
 
         return drawing_points, water_vec
 
+    def init_road_coord(self, roads):
+        road_coord = []
+        for x in roads:
+            road_coord.append([self.building_coord[x[0]], self.building_coord[x[1]]])
+        return road_coord
+
     def paintEvent(self, e):
         qp = QPainter()
         qp.begin(self)
@@ -100,16 +137,55 @@ class App(QWidget):
                 qp.setPen(QColor(0, 0, 0))
                 qp.setFont(QFont('Decorative', 30))
                 qp.drawPolygon(x)
-                qp.drawText((x[5] + x[3]) / 2, str(self.tiles[i][1]))
+                qp.drawText((x[0] + x[4]) / 2, str(self.tiles[i][1]))
 
                 i += 1
 
-    def draw_settlements(self, e, gp):
+    def draw_settlements(self, e, qp):
+
+        # print("Coordinates: ", self.coordinates[0][0])
+        # print(len(self.building_coord))
+
+        for counter, building in enumerate(self.building_state):
+            self.player_color(building, qp)
+
+            if 0 < building < 5:
+                qp.drawEllipse(self.building_coord[counter], 10, 10)
+            elif 4 < building < 9:
+                qp.drawRect(self.building_coord[counter].x() - 10, self.building_coord[counter].y() - 10, 20, 20)
+
+        """
+        Building type: 0 - no building, 1 - Settlement P1, 2 - Settlement P2, 3 - Settlement P3, 4 - Settlement P4
+                5 - City P1, 6 - City P2, 7 - City P3, 8 - City P4, 9 - No building possible
+        """
+    # refresh building and road state
+    def draw_road(self):
 
         pass
 
-	# refresh building and road state
+    def refresh_building_road_states(self, building_state, road_state):
+        self.building_state = building_state
+        self.road_state = road_state
+
+    def player_color(self, player, qp):
+        if player == 1 or player == 5:
+            qp.setPen(QColor(0, 0, 0))
+            qp.setBrush(QColor(0, 0, 0))
+
+        elif player == 2 or player == 6:
+            qp.setPen(QColor(153, 0, 76))
+            qp.setBrush(QColor(153, 0, 76))
+
+        elif player == 3 or player == 7:
+            qp.setPen(QColor(204, 153, 255))
+            qp.setBrush(QColor(204, 153, 255))
+
+        elif player  == 4 or player == 8:
+            qp.setPen(QColor(50, 255, 255))
+            qp.setBrush(QColor(50, 255, 255))
+
 """
+
 hex6 -> 0,1,2,10,9,8
 hex7 -> 2,3,4,12,11,10
 hex8 -> 4,5,6,14,13,12
@@ -130,7 +206,7 @@ hex21 -> 24,25,26,37,36,35 --
     ex = App()
     sys.exit(app.exec_())
 else:
-	app = QApplication(sys.argv)
-	ex = App()
-	sys.exit(app.exec_())
+    app = QApplication(sys.argv)
+    ex = App()
+    sys.exit(app.exec_())
 """

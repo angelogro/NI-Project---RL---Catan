@@ -4,19 +4,25 @@ from PyQt5.QtWidgets import QApplication, QWidget
 
 from game.game import defines
 from game.game import Game
-from game.boardgui import App
+from game.boardgui import Board
 import numpy as np
 
 
 def test_gui():
 
     g = Game(random_init=True)
+    g.place_settlement(0, 1)
+    g.place_settlement(10, 2)
+    g.place_settlement(32, 3)
+    g.place_city(50, 1)
+
     #print(g.tiles.get_tiles())
     #print(len(g.crossings.get_building_state()))
-    #print(g.roads.get_state())
+    print(len(g.roads.get_state()))
     app = QApplication(sys.argv)
 
-    ex = App(g.tiles.get_tiles(), g.crossings.get_building_state(), g.roads.get_state())
+    ex = Board(g.tiles.get_tiles(), g.roads.get_roads(), g.crossings.get_building_state(), g.roads.get_roads())
+    ex.refresh_building_road_states(g.crossings.get_building_state(), g.roads.get_state())
 
     sys.exit(app.exec_())
 
